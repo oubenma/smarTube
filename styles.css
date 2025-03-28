@@ -1,0 +1,17 @@
+/* Basic styles - can be expanded */
+
+#summarize-button-ext:hover {
+    /* Add specific hover styles if needed, supplementing inline styles */
+    /* background-color: #d0d0d0 !important; */
+     /* Using !important might be needed to override YouTube's default styles */
+}
+
+#youtube-summary-container-ext {
+   /* Styles are mostly handled inline in content.js for simplicity,
+      but you could move them here */
+   /* Example: define scrollbar colors using variables set in JS */
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: var(--scrollbar-thumb-color, #888) var(--scrollbar-track-color, #f1f1f1); /* For Firefox */
+}
+
+/* Webkit scrollbar styles moved inline for direct injection */

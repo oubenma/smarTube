@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,
+    "name": "YouTube Summarizer (Gemini)",
+    "version": "1.0",
+    "description": "Adds a button to YouTube videos to generate a summary using Gemini.",
+    "permissions": [
+      "activeTab", // Needed to get the URL
+      "scripting"  // Needed to inject content script (though we use content_scripts here)
+      // "storage" // Add this if you implement storing the API key securely
+    ],
+    "host_permissions": [
+      "https://generativelanguage.googleapis.com/" // Allow requests to Gemini API
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["*://*.youtube.com/watch*"], // Run only on video watch pages
+        "js": ["content.js"],
+        "css": ["styles.css"] // Optional: for styling
+      }
+    ],
+    "action": {
+      "default_icon": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+      },
+      "default_title": "YouTube Summarizer Settings (Not Implemented)"
+      // You could add a popup later for settings like API key input
+    },
+    "icons": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }

@@ -66,6 +66,8 @@ function injectSummaryDivContainer() {
             // Style the scrollbar (optional, webkit browsers)
             summaryDiv.style.setProperty('--scrollbar-thumb-color', '#c1c1c1');
             summaryDiv.style.setProperty('--scrollbar-track-color', '#f1f1f1');
+            // Add relative positioning to the container to allow absolute positioning of the child button
+            summaryDiv.style.position = 'relative';
             summaryDiv.innerHTML = `
                 <style>
                     #youtube-summary-container-ext::-webkit-scrollbar {
@@ -87,21 +89,39 @@ function injectSummaryDivContainer() {
                          margin-bottom: 10px;
                          font-size: 16px;
                          color: #333;
+                         padding-right: 25px; /* Add padding to prevent overlap with X button */
                     }
                     #youtube-summary-container-ext p { margin-bottom: 10px; }
                     #youtube-summary-container-ext ul { margin-left: 20px; margin-bottom: 10px;}
+                    #close-summary-x-btn {
+                        position: absolute;
+                        top: 10px;
+                        right: 15px;
+                        background: none;
+                        border: none;
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #666;
+                        cursor: pointer;
+                        padding: 0 5px;
+                        line-height: 1;
+                    }
+                    #close-summary-x-btn:hover {
+                        color: #000;
+                    }
                 </style>
+                <button id="close-summary-x-btn" title="Close Summary">&times;</button>
                 <strong>Video Summary</strong>
                 <div id="summary-content-ext"></div>
-                <button id="close-summary-btn" style="margin-top: 10px; padding: 5px 10px; cursor: pointer;">Close</button>
-            `;
+                
+            `; /* Old button removed */
 
             // Insert the summary div at the top of the secondary column
             secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
             console.log("Summary div container injected.");
 
-            // Add event listener for the close button
-            document.getElementById('close-summary-btn').addEventListener('click', () => {
+            // Add event listener for the NEW close button
+            document.getElementById('close-summary-x-btn').addEventListener('click', () => {
                 summaryDiv.style.display = 'none';
             });
 

@@ -40,8 +40,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function callGeminiAPI(videoUrl) {
     console.log("Calling Gemini API for URL:", videoUrl);
+    TODO: // solve problem with the URL later
     const prompt = `Please provide a detailed summary of the YouTube video found at this URL: ${videoUrl}. Focus on the key topics, main points, and any significant conclusions or information presented.`;
-
+    
+    // const prompt = `give me list of 5 big cities in japan and put this text in the list: ${videoUrl}`;
     try {
         const response = await fetch(GEMINI_API_URL, {
             method: 'POST',

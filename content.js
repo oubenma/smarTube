@@ -14,19 +14,13 @@ function injectSummarizeButton() {
         const summarizeButton = document.createElement('button');
         summarizeButton.id = 'summarize-button-ext';
         summarizeButton.textContent = '✨ Summarize';
-        summarizeButton.style.marginLeft = '8px';
-        summarizeButton.style.padding = '8px 12px';
-        summarizeButton.style.cursor = 'pointer';
-        summarizeButton.style.backgroundColor = '#f1f1f1';
-        summarizeButton.style.border = '1px solid #ccc';
-        summarizeButton.style.borderRadius = '18px'; // Match YouTube's style
-        summarizeButton.style.fontSize = '14px';
-        summarizeButton.style.fontWeight = '500'; // Match YouTube's style
-        summarizeButton.style.lineHeight = '20px'; // Match YouTube's style
+        // Styles moved to styles.css
 
-        // Hover effect
-        summarizeButton.onmouseover = () => summarizeButton.style.backgroundColor = '#e0e0e0';
-        summarizeButton.onmouseout = () => summarizeButton.style.backgroundColor = '#f1f1f1';
+        // Apply theme class based on storage (needed if button styles depend on theme class on parent)
+        // Although current CSS targets button directly, this is good practice if needed later
+        chrome.storage.sync.get(['theme'], (result) => {
+            applyTheme(result.theme || 'light'); // Apply theme to container which might affect button via CSS
+        });
 
 
         summarizeButton.addEventListener('click', handleSummarizeClick);
@@ -52,72 +46,23 @@ function injectSummaryDivContainer() {
         if (secondaryColumn) {
             summaryDiv = document.createElement('div');
             summaryDiv.id = 'youtube-summary-container-ext';
-            summaryDiv.style.backgroundColor = '#f9f9f9';
-            summaryDiv.style.border = '1px solid #ddd';
-            summaryDiv.style.padding = '15px';
-            summaryDiv.style.marginTop = '15px';
-            summaryDiv.style.borderRadius = '12px';
-            summaryDiv.style.maxHeight = '400px'; // Set a max height
-            summaryDiv.style.overflowY = 'auto'; // Enable scrolling
-            summaryDiv.style.fontSize = '14px';
-            summaryDiv.style.lineHeight = '1.6';
+            // Most styles moved to styles.css
             summaryDiv.style.display = 'none'; // Initially hidden
 
-            // Style the scrollbar (optional, webkit browsers)
-            summaryDiv.style.setProperty('--scrollbar-thumb-color', '#c1c1c1');
-            summaryDiv.style.setProperty('--scrollbar-track-color', '#f1f1f1');
-            // Add relative positioning to the container to allow absolute positioning of the child button
-            summaryDiv.style.position = 'relative';
+            // Set inner HTML (styles are now primarily in styles.css)
             summaryDiv.innerHTML = `
-                <style>
-                    #youtube-summary-container-ext::-webkit-scrollbar {
-                        width: 8px;
-                    }
-                    #youtube-summary-container-ext::-webkit-scrollbar-track {
-                        background: var(--scrollbar-track-color, #f1f1f1);
-                        border-radius: 10px;
-                    }
-                    #youtube-summary-container-ext::-webkit-scrollbar-thumb {
-                        background: var(--scrollbar-thumb-color, #888);
-                        border-radius: 10px;
-                    }
-                    #youtube-summary-container-ext::-webkit-scrollbar-thumb:hover {
-                        background: #555;
-                    }
-                    #youtube-summary-container-ext strong {
-                         display: block;
-                         margin-bottom: 10px;
-                         font-size: 16px;
-                         color: #333;
-                         padding-right: 25px; /* Add padding to prevent overlap with X button */
-                    }
-                    #youtube-summary-container-ext p { margin-bottom: 10px; }
-                    #youtube-summary-container-ext ul { margin-left: 20px; margin-bottom: 10px;}
-                    #close-summary-x-btn {
-                        position: absolute;
-                        top: 10px;
-                        right: 15px;
-                        background: none;
-                        border: none;
-                        font-size: 18px;
-                        font-weight: bold;
-                        color: #666;
-                        cursor: pointer;
-                        padding: 0 5px;
-                        line-height: 1;
-                    }
-                    #close-summary-x-btn:hover {
-                        color: #000;
-                    }
-                </style>
                 <button id="close-summary-x-btn" title="Close Summary">&times;</button>
                 <strong>Video Summary</strong>
                 <div id="summary-content-ext"></div>
-                
-            `; /* Old button removed */
+            `;
 
             // Insert the summary div at the top of the secondary column
             secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
+
+            // Apply the theme based on storage AFTER the div is in the DOM
+            chrome.storage.sync.get(['theme'], (result) => {
+                applyTheme(result.theme || 'light');
+            });
             console.log("Summary div container injected.");
 
             // Add event listener for the NEW close button
@@ -172,12 +117,30 @@ function handleSummarizeClick() {
     });
 }
 
+// Function to apply the theme class
+function applyTheme(theme) {
+    if (summaryDiv) {
+        if (theme === 'dark') {
+            summaryDiv.classList.add('dark-theme');
+            // Also apply to button if its styling depends on parent class
+            const button = document.getElementById('summarize-button-ext');
+            if (button) button.classList.add('dark-theme'); // Example if needed
+        } else {
+            summaryDiv.classList.remove('dark-theme');
+            const button = document.getElementById('summarize-button-ext');
+            if (button) button.classList.remove('dark-theme'); // Example if needed
+        }
+        // Update scrollbar variables if needed (though CSS handles this now)
+        // summaryDiv.style.setProperty('--scrollbar-thumb-color', theme === 'dark' ? '#555' : '#c1c1c1');
+        // summaryDiv.style.setProperty('--scrollbar-track-color', theme === 'dark' ? '#333' : '#f1f1f1');
+    }
+}
+
 // Function to display the summary or an error message
 function displaySummary(text) {
     if (summaryDiv) {
         const contentArea = summaryDiv.querySelector('#summary-content-ext');
-        // Basic sanitation to prevent raw HTML injection from API (though Gemini usually returns Markdown/text)
-        // For more robust XSS protection, use a sanitizer library if needed.
+        // Basic sanitation to prevent raw HTML injection from API
         // Convert basic markdown-like newlines to <br> and handle potential lists
         let formattedText = text.replace(/\n/g, '<br>');
         // Consider adding more markdown parsing here if Gemini returns complex markdown
@@ -232,12 +195,18 @@ const initialCheckInterval = setInterval(() => {
 }, 500); // Check every 500ms
 
 
-// Listen for messages from background (e.g., if background needs to update something later)
+// Listen for messages from background or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "displayUpdate") { // Example action
-     console.log("Received message from background:", request.message);
-     // Update UI if needed
-     // sendResponse({ status: "Received update" }); // Optional: acknowledge receipt
-  }
-  return true; // Indicates response may be sent asynchronously (important!)
+    if (request.action === "updateTheme") {
+        console.log("Theme update message received:", request.theme);
+        applyTheme(request.theme);
+        sendResponse({ status: "Theme updated" }); // Acknowledge receipt
+    } else if (request.action === "displayUpdate") { // Example action from original code
+        console.log("Received message from background:", request.message);
+        // Update UI if needed
+        // sendResponse({ status: "Received update" });
+    }
+    // Return true if you might send a response asynchronously.
+    // For theme update, response is synchronous, but returning true is safer practice.
+    return true;
 });

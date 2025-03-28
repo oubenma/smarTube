@@ -3,7 +3,7 @@
 // Consider using chrome.storage or an options page for users to enter their key.
 const GEMINI_API_KEY = "AIzaSyBePCsxeJ2JaUvKf41fgxmY1ezgtJe9ZGQ"; // <<<--- PASTE YOUR KEY HERE
 
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 // Using gemini-1.5-flash - it's faster and cheaper, often sufficient for summarization.
 // You could use "gemini-pro" instead:
 // const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
@@ -40,10 +40,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function callGeminiAPI(videoUrl) {
     console.log("Calling Gemini API for URL:", videoUrl);
-    TODO: // solve problem with the URL later
+    // TODO:  solve problem with the URL later
     const prompt = `Please provide a detailed summary of the YouTube video found at this URL: ${videoUrl}. Focus on the key topics, main points, and any significant conclusions or information presented.`;
     
-    // const prompt = `give me list of 5 big cities in japan and put this text in the list: ${videoUrl}`;
+    // var prompt = `give me list of 5 big cities in japan`;
     try {
         const response = await fetch(GEMINI_API_URL, {
             method: 'POST',

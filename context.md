@@ -43,8 +43,11 @@ The extension injects a "✨ Summarize" button onto YouTube video watch pages (`
     *   Reads the current theme setting from `chrome.storage.sync` on load.
     *   Saves the updated theme preference to `chrome.storage.sync` when the toggle is changed.
     *   Sends a message (`updateTheme`) to the active tab's `content.js` to apply the theme change immediately.
-*   **`icons/`**:
-    *   Contains the extension's icons (`icon16.png`, `icon48.png`, `icon128.png`) used in the browser toolbar and extensions page.
+    *   **`icons/`**:
+        *   Contains the extension's icons (`icon16.png`, `icon48.png`, `icon128.png`) used in the browser toolbar and extensions page.
+*   **`api/`**: Contains a Python-based backend API.
+    *   **`main.py`**: Implements a FastAPI web server with a single endpoint (`/subtitles`). This endpoint takes a YouTube video URL, extracts the video ID, fetches the transcript using `youtube-transcript-api`, and returns the transcript data.
+    *   **`requirements.txt`**: Lists the Python dependencies needed for the API (`fastapi`, `uvicorn`, `youtube-transcript-api`).
 *   **`ideas.md`**:
     *   A markdown file listing potential future enhancements:
         *   Adding a more prominent "X" close button to the summary div.

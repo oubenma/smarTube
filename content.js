@@ -108,8 +108,15 @@ function handleSummarizeClick() {
                 displaySummary(response.summary, false); // false indicates it's not an error
             } else if (response.error) {
                 console.error("Error from background:", response.error);
-                // Pass the error message to displaySummary, marking it as an error
-                displaySummary(response.error, true); // true indicates it's an error
+                // Check for the specific API key error
+                if (response.error === "API_KEYS_MISSING") {
+                    // Provide a specific message with instructions
+                    const optionsMessage = `API Keys are missing. Please configure them in the extension options.<br>(Right-click the extension icon > Options)`;
+                    displaySummary(optionsMessage, true); // Display as an error
+                } else {
+                    // Pass other errors to displaySummary
+                    displaySummary(response.error, true); // true indicates it's an error
+                }
             } else {
                  displaySummary("Received an unexpected response from the background script.", true);
             }

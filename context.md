@@ -6,14 +6,16 @@ This project is a Chrome browser extension designed to summarize YouTube videos 
 
 The extension injects a "✨ Summarize" button onto YouTube video watch pages (`youtube.com/watch*`). When clicked:
 1.  `content.js` sends the video's URL to `background.js`.
-2.  `background.js` calls the Supadata Transcript API (`https://api.supadata.ai/v1/youtube/transcript`) to fetch the video's transcript.
-3.  If successful, `background.js` sends the fetched transcript text to the Google Gemini API (`gemini-1.5-flash-latest` by default) with a prompt asking for a detailed summary of the transcript.
-4.  The Gemini API returns the summary in Markdown format.
-5.  `background.js` sends this Markdown summary back to `content.js`.
-6.  `content.js` uses the bundled Showdown.js library to convert the Markdown summary into HTML.
-7.  The resulting HTML summary is displayed in a dedicated container injected into the YouTube page's secondary column.
+2.  `background.js` retrieves the user's Supadata and Gemini API keys from `chrome.storage.sync`.
+3.  If keys are found, `background.js` calls the Supadata Transcript API (`https://api.supadata.ai/v1/youtube/transcript`) using the Supadata key to fetch the video's transcript.
+4.  If transcript fetch is successful, `background.js` sends the fetched transcript text to the Google Gemini API (`gemini-1.5-flash-latest` by default) using the Gemini key, with a prompt asking for a detailed summary of the transcript.
+5.  The Gemini API returns the summary in Markdown format.
+6.  `background.js` sends this Markdown summary back to `content.js`.
+7.  `content.js` uses the bundled Showdown.js library to convert the Markdown summary into HTML.
+8.  The resulting HTML summary is displayed in a dedicated container injected into the YouTube page's secondary column.
+9.  If API keys are missing in storage, `background.js` sends an error to `content.js`, which then displays a message prompting the user to configure keys in the extension's options page.
 
-This container features an "X" close button in the top-right corner. The extension also includes a theme toggle (Light/Dark) accessible via a popup window when clicking the extension's toolbar icon. The chosen theme is saved and applied to the button and summary container.
+The summary container features an "X" close button in the top-right corner. The extension also includes a theme toggle (Light/Dark) accessible via a popup window when clicking the extension's toolbar icon. The chosen theme is saved and applied to the button and summary container. API keys are managed via a dedicated options page.
 
 ## File Structure & Purpose
 
@@ -21,26 +23,27 @@ This container features an "X" close button in the top-right corner. The extensi
     *   Defines the extension's metadata (name, version, description).
     *   Specifies necessary permissions (`activeTab`, `scripting`, `storage`) and host permissions (`https://generativelanguage.googleapis.com/` for Gemini API calls).
     *   Declares `background.js` as the service worker.
-    *   Registers `libs/showdown.min.js`, `content.js`, and `styles.css` to be injected into YouTube watch pages (note: comments were removed as they are invalid in JSON).
-    *   Defines icons and the browser action, linking it to `popup.html`.
+    *   Registers `libs/showdown.min.js`, `content.js`, and `styles.css` to be injected into YouTube watch pages.
+    *   Defines icons and the browser action (popup).
+    *   Declares `options.html` as the options page using `options_ui`, set to open in a new tab.
 *   **`background.js`**:
     *   Handles the core API interaction logic.
-    *   Listens for `getSummary` messages from `content.js` containing the video URL.
-    *   Calls the Supadata Transcript API to fetch the video transcript using a hardcoded API key (`SUPADATA_API_KEY`).
-    *   If transcript fetch is successful, constructs a prompt using the transcript text and calls the Gemini API (`GEMINI_API_URL`) using a hardcoded API key (`GEMINI_API_KEY`).
-    *   **IMPORTANT:** Hardcoding both `GEMINI_API_KEY` and `SUPADATA_API_KEY` is a significant security risk. These should be managed securely (e.g., via `chrome.storage` and an options page).
-    *   Handles API responses, extracts the Markdown summary text from Gemini, and manages potential errors from both API calls.
-    *   Sends the Markdown summary (or error message) back to `content.js`.
+    *   Listens for `getSummary` messages from `content.js`.
+    *   Retrieves Supadata and Gemini API keys from `chrome.storage.sync`.
+    *   If keys are present, calls the Supadata Transcript API (using the Supadata key) and then the Gemini API (using the Gemini key and the transcript).
+    *   Handles API responses, extracts the Markdown summary text from Gemini, and manages potential errors from storage access and both API calls.
+    *   Sends the Markdown summary or an error message (including a specific `API_KEYS_MISSING` error if keys aren't configured) back to `content.js`.
 *   **`content.js`**:
     *   Responsible for interacting with the YouTube page's DOM.
     *   Injects the "✨ Summarize" button near the like/dislike buttons.
     *   Injects a `div` container (`#youtube-summary-container-ext`) into the secondary column to display the summary. This container is initially hidden and includes an "X" close button in the top-right corner.
     *   Handles clicks on the "Summarize" button, displays a loading state, and sends the video URL to `background.js`.
     *   Receives the Markdown summary (or error message) from `background.js`.
-    *   Uses the bundled Showdown library (`libs/showdown.min.js`) to convert the received Markdown summary into HTML.
+    *   If an `API_KEYS_MISSING` error is received, displays a message prompting the user to configure keys in the options page.
+    *   Otherwise, uses the bundled Showdown library (`libs/showdown.min.js`) to convert the received Markdown summary into HTML.
     *   Displays the generated HTML (or error message) in the summary container.
     *   Uses a `MutationObserver` to handle YouTube's single-page application nature, ensuring the button is re-injected when navigating between videos.
-    *   Reads the theme preference from `chrome.storage` on load and applies the corresponding CSS class (`dark-theme`) to the summary container and button.
+    *   Reads the theme preference from `chrome.storage.sync` on load and applies the corresponding CSS class (`dark-theme`) to the summary container and button.
     *   Listens for `updateTheme` messages from `popup.js` to dynamically change the theme.
 *   **`styles.css`**:
     *   Contains all the styling for the injected elements (button, summary container, close button, scrollbars).
@@ -54,6 +57,16 @@ This container features an "X" close button in the top-right corner. The extensi
     *   Reads the current theme setting from `chrome.storage.sync` on load.
     *   Saves the updated theme preference to `chrome.storage.sync` when the toggle is changed.
     *   Sends a message (`updateTheme`) to the active tab's `content.js` to apply the theme change immediately.
+*   **`options.html`**:
+    *   The HTML structure for the extension's options page.
+    *   Provides input fields for Gemini and Supadata API keys, links to get the keys, a save button, and a status message area.
+    *   Links to `options.css` and `options.js`.
+*   **`options.js`**:
+    *   Handles the logic for the options page.
+    *   Loads saved keys from `chrome.storage.sync` on page load.
+    *   Saves entered keys to `chrome.storage.sync` when the save button is clicked.
+*   **`options.css`**:
+    *   Provides basic styling for the `options.html` page.
 *   **`libs/`**: Contains third-party libraries bundled with the extension.
     *   **`showdown.min.js`**: The Showdown.js library used for converting Markdown to HTML in `content.js`. **Note:** The actual library code needs to be manually added to this file.
 *   **`icons/`**:
@@ -73,18 +86,18 @@ This container features an "X" close button in the top-right corner. The extensi
 
 ## Key Technologies & Concepts
 
-*   **Chrome Extension APIs:** Manifest V3, Service Workers (`background.js`), Content Scripts (`content.js`), Popups (`action.default_popup`), `chrome.runtime.sendMessage`, `chrome.runtime.onMessage`, `chrome.storage.sync`, `chrome.tabs.query`, `chrome.tabs.sendMessage`, DOM manipulation.
+*   **Chrome Extension APIs:** Manifest V3, Service Workers (`background.js`), Content Scripts (`content.js`), Popups (`action.default_popup`), Options UI (`options_ui`), `chrome.runtime.sendMessage`, `chrome.runtime.onMessage`, `chrome.storage.sync` (used for theme and API keys), `chrome.tabs.query`, `chrome.tabs.sendMessage`, DOM manipulation.
 *   **Web APIs:** `fetch`, `MutationObserver`, DOM manipulation (`document.querySelector`, `createElement`, `appendChild`, `insertBefore`, event listeners), CSS Variables, `element.classList`.
 *   **External APIs:**
     *   Google Gemini API (`generativelanguage.googleapis.com`)
     *   Supadata Transcript API (`api.supadata.ai`)
 *   **Libraries:** Showdown.js (for Markdown rendering).
 *   **Languages:** JavaScript, HTML, CSS, JSON.
-*   **Security:** Explicitly notes the significant risk of hardcoding API keys (`GEMINI_API_KEY`, `SUPADATA_API_KEY`).
+*   **Security:** API keys are now managed by the user via the options page and stored securely using `chrome.storage.sync`, resolving the previous hardcoding risk.
 
 ## Potential Improvements (from `ideas.md`)
 
 *   Better UI/UX for the close button (Implemented: "X" button added).
 *   Dark mode support (Implemented: Theme toggle added).
 *   Proper Markdown rendering for summaries (Implemented: Using Showdown.js).
-*   Secure API key handling (High Priority - currently hardcoded).
+*   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).

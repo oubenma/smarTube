@@ -1,60 +1,59 @@
-// IMPORTANT: Replace with your actual Gemini API Key
-// **NEVER** commit or share keys publicly.
-// Consider using chrome.storage or an options page for users to enter their keys.
-const GEMINI_API_KEY = "AIzaSyBePCsxeJ2JaUvKf41fgxmY1ezgtJe9ZGQ"; // <<<--- PASTE YOUR GEMINI KEY HERE
-const SUPADATA_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6IjEifQ.eyJpc3MiOiJuYWRsZXMiLCJpYXQiOiIxNzQ1MzY1MTkyIiwicHVycG9zZSI6ImFwaV9hdXRoZW50aWNhdGlvbiIsInN1YiI6ImMzYTY2NGRkOTMyNzQwOTJiZGE5MWJkODRlZjk2MWJmIn0.dyEsUYsh33NBxxg-bMpDXzhWD8umI8KRhGUru2Pmb_4"; // <<<--- PASTE YOUR SUPADATA KEY HERE
+// background.js - Handles API calls and communication
 
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
-// Note: Switched back to gemini-1.5-flash-latest as per context.md
-// const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+// Constants
+const GEMINI_MODEL = "gemini-1.5-flash-latest"; // Or "gemini-pro" etc.
 const SUPADATA_API_BASE_URL = "https://api.supadata.ai/v1/youtube/transcript";
-
+const API_KEYS_MISSING_ERROR = "API_KEYS_MISSING"; // Constant for error type
 
 // Listen for messages from the content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("Background script received message:", request.action); // Log action
+    console.log("Background script received message:", request.action);
     if (request.action === "getSummary") {
         console.log("Background script received getSummary request for URL:", request.url);
 
-        // Basic key validation
-        if (!GEMINI_API_KEY || GEMINI_API_KEY.startsWith("AIzaSy") === false) {
-             console.error("Gemini API Key not set correctly in background.js");
-             sendResponse({ error: "Gemini API Key is missing or invalid. Please configure it." });
-             return true;
-        }
-        if (!SUPADATA_API_KEY || SUPADATA_API_KEY.length < 20) {
-             console.error("Supadata API Key not set correctly in background.js");
-             sendResponse({ error: "Supadata API Key is missing or invalid. Please configure it." });
-             return true;
-        }
+        // 1. Get API Keys from storage
+        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey'], (items) => {
+            const geminiApiKey = items.geminiApiKey;
+            const supadataApiKey = items.supadataApiKey;
 
-        // Chain the API calls: Get transcript first, then summarize
-        getTranscript(request.url)
-            .then(transcript => {
-                if (!transcript || transcript.trim().length === 0) {
-                    // Handle cases where transcript is empty or couldn't be fetched properly
-                    throw new Error("Received empty or invalid transcript from Supadata.");
-                }
-                console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API...");
-                return callGeminiAPI(transcript); // Pass transcript to Gemini
-            })
-            .then(summary => {
-                console.log("Sending summary back to content script.");
-                sendResponse({ summary: summary });
-            })
-            .catch(error => {
-                console.error("Error during summarization process:", error);
-                // Send a more specific error message if possible
-                let errorMessage = "Failed to generate summary.";
-                if (error.message.includes("Supadata")) {
-                    errorMessage = `Failed to fetch transcript: ${error.message}`;
-                } else if (error.message.includes("Gemini")) {
-                    errorMessage = `Failed to fetch summary from Gemini: ${error.message}`;
-                } else {
-                    errorMessage = error.message || errorMessage;
-                }
-                sendResponse({ error: errorMessage });
-            });
+            // 2. Validate Keys
+            if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
+                console.error("API Keys missing or invalid in storage.");
+                sendResponse({ error: API_KEYS_MISSING_ERROR }); // Send specific error code
+                return; // Stop processing
+            }
+
+            console.log("API Keys retrieved successfully.");
+
+            // 3. Chain the API calls: Get transcript first, then summarize
+            getTranscript(request.url, supadataApiKey) // Pass key
+                .then(transcript => {
+                    if (!transcript || transcript.trim().length === 0) {
+                        throw new Error("Received empty or invalid transcript from Supadata.");
+                    }
+                    console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API...");
+                    return callGeminiAPI(transcript, geminiApiKey); // Pass transcript and key
+                })
+                .then(summary => {
+                    console.log("Sending summary back to content script.");
+                    sendResponse({ summary: summary });
+                })
+                .catch(error => {
+                    console.error("Error during summarization process:", error);
+                    let errorMessage = "Failed to generate summary.";
+                    // Check for specific error types if needed (e.g., distinguish Supadata vs Gemini errors)
+                    if (error.message.includes("API key") || error.message.includes("API request failed")) {
+                         errorMessage = error.message; // Use the specific error from the API call
+                    } else if (error.message.includes("Supadata")) {
+                        errorMessage = `Failed to fetch transcript: ${error.message}`;
+                    } else if (error.message.includes("Gemini")) {
+                        errorMessage = `Failed to fetch summary from Gemini: ${error.message}`;
+                    } else {
+                        errorMessage = error.message || errorMessage;
+                    }
+                    sendResponse({ error: errorMessage });
+                });
+        });
 
         return true; // Indicates that the response will be sent asynchronously
     }
@@ -62,8 +61,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 
-// New function to get transcript from Supadata
-async function getTranscript(videoUrl) {
+// Function to get transcript from Supadata
+async function getTranscript(videoUrl, supadataApiKey) { // Added apiKey parameter
     console.log("Calling Supadata API for URL:", videoUrl);
     const transcriptUrl = `${SUPADATA_API_BASE_URL}?url=${encodeURIComponent(videoUrl)}&text=true`;
 
@@ -71,8 +70,8 @@ async function getTranscript(videoUrl) {
         const response = await fetch(transcriptUrl, {
             method: 'GET',
             headers: {
-                'x-api-key': SUPADATA_API_KEY,
-                'Accept': 'application/json' // Explicitly ask for JSON
+                'x-api-key': supadataApiKey, // Use passed key
+                'Accept': 'application/json'
             }
         });
 
@@ -119,30 +118,30 @@ async function getTranscript(videoUrl) {
 }
 
 
-// Modified function to summarize transcript text
-async function callGeminiAPI(transcriptText) { // Parameter changed from videoUrl
-    console.log("Calling Gemini API to summarize transcript (length:", transcriptText.length, ")"); // Updated log
+// Function to summarize transcript text using Gemini API
+async function callGeminiAPI(transcriptText, geminiApiKey) { // Added apiKey parameter
+    console.log("Calling Gemini API to summarize transcript (length:", transcriptText.length, ")");
 
-    // Updated prompt to summarize the provided text
-    // const prompt = `Please provide a detailed summary of the following video transcript. Focus on the key topics, main points, and any significant conclusions or information presented:\n\n---\n\n${transcriptText}\n\n---\n\nSummary:`;
+    // Construct API URL dynamically
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+
+    // Updated prompt
     const prompt = `Summarize the following video transcript into brief sentences of key points, then provide complete highlighted information in a list, choosing an appropriate emoji for each highlight.
-Your output should use the following format: 
+Your output should use the following format:
 ### Summary
 {brief summary of this content}
 ### Highlights
 - [Emoji] Bullet point with complete explanation :\n\n---\n\n${transcriptText}`;
 
-    // var prompt = `give me list of 5 big cities in japan`; // Keep example commented out
     try {
-        // Limit transcript size if necessary (Gemini has input token limits)
-        // This is a basic example; more sophisticated truncation might be needed.
-        const MAX_INPUT_LENGTH = 30000; // Adjust as needed based on Gemini model limits
+        // Limit transcript size if necessary
+        const MAX_INPUT_LENGTH = 30000; // Example limit
         if (transcriptText.length > MAX_INPUT_LENGTH) {
             console.warn(`Transcript length (${transcriptText.length}) exceeds limit (${MAX_INPUT_LENGTH}). Truncating.`);
             transcriptText = transcriptText.substring(0, MAX_INPUT_LENGTH);
         }
 
-        const response = await fetch(GEMINI_API_URL, {
+        const response = await fetch(geminiApiUrl, { // Use dynamic URL
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

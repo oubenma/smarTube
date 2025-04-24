@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Summarizer Options</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <h1>YouTube Summarizer Options</h1>
+
+    <div class="option-item">
+        <label for="geminiApiKey">Gemini API Key:</label>
+        <input type="password" id="geminiApiKey" name="geminiApiKey" size="50">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="help-link">Get Gemini Key</a>
+    </div>
+
+    <div class="option-item">
+        <label for="supadataApiKey">Supadata API Key:</label>
+        <input type="password" id="supadataApiKey" name="supadataApiKey" size="50">
+        <a href="https://supadata.ai/" target="_blank" class="help-link">Get Supadata Key</a>
+        <!-- Note: Update this link if Supadata has a more specific API key page -->
+    </div>
+
+    <button id="saveButton">Save Keys</button>
+    <span id="statusMessage"></span>
+
+    <script src="options.js"></script>
+</body>
+</html>

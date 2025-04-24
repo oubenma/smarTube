@@ -9,16 +9,16 @@
       "storage"
     ],
     "host_permissions": [
-      "https://generativelanguage.googleapis.com/" // Allow requests to Gemini API
+      "https://generativelanguage.googleapis.com/"
     ],
     "background": {
       "service_worker": "background.js"
     },
     "content_scripts": [
       {
-        "matches": ["*://*.youtube.com/watch*"], // Run only on video watch pages
-        "js": ["content.js"],
-        "css": ["styles.css"] // Optional: for styling
+        "matches": ["*://*.youtube.com/watch*"],
+        "js": ["libs/showdown.min.js", "content.js"],
+        "css": ["styles.css"]
       }
     ],
     "action": {

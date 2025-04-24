@@ -104,15 +104,17 @@ function handleSummarizeClick() {
         if (response) {
             console.log("Response from background received");
             if (response.summary) {
-                displaySummary(response.summary);
+                // Pass the raw Markdown summary to displaySummary
+                displaySummary(response.summary, false); // false indicates it's not an error
             } else if (response.error) {
                 console.error("Error from background:", response.error);
-                displaySummary(`<strong>Error:</strong> ${response.error}`);
+                // Pass the error message to displaySummary, marking it as an error
+                displaySummary(response.error, true); // true indicates it's an error
             } else {
-                 displaySummary("Received an unexpected response from the background script.");
+                 displaySummary("Received an unexpected response from the background script.", true);
             }
         } else {
-            displaySummary("Received no response from the background script. Check background logs.");
+            displaySummary("Received no response from the background script. Check background logs.", true);
         }
     });
 }
@@ -134,21 +136,41 @@ function applyTheme(theme) {
         // summaryDiv.style.setProperty('--scrollbar-thumb-color', theme === 'dark' ? '#555' : '#c1c1c1');
         // summaryDiv.style.setProperty('--scrollbar-track-color', theme === 'dark' ? '#333' : '#f1f1f1');
     }
-}
+} // <-- Added missing closing brace here
 
-// Function to display the summary or an error message
-function displaySummary(text) {
+// Function to display the summary (as HTML) or an error message
+function displaySummary(content, isError = false) {
     if (summaryDiv) {
         const contentArea = summaryDiv.querySelector('#summary-content-ext');
-        // Basic sanitation to prevent raw HTML injection from API
-        // Convert basic markdown-like newlines to <br> and handle potential lists
-        let formattedText = text.replace(/\n/g, '<br>');
-        // Consider adding more markdown parsing here if Gemini returns complex markdown
+        let htmlContent = '';
 
-        contentArea.innerHTML = formattedText; // Display the text
+        if (isError) {
+            // Display error messages directly, maybe wrap in strong tags
+            htmlContent = `<strong>Error:</strong> ${content}`;
+        } else {
+            // Use Showdown to convert Markdown summary to HTML
+            // Ensure Showdown library is loaded (should be via manifest.json)
+            if (typeof showdown !== 'undefined') {
+                const converter = new showdown.Converter({
+                    // Optional: Configure Showdown options here if needed
+                    // e.g., tables: true, strikethrough: true
+                    simplifiedAutoLink: true,
+                    strikethrough: true,
+                    tables: true,
+                    tasklists: true
+                });
+                htmlContent = converter.makeHtml(content);
+            } else {
+                console.error("Showdown library not loaded!");
+                // Fallback: display raw text with basic formatting
+                htmlContent = content.replace(/\n/g, '<br>');
+            }
+        }
+
+        contentArea.innerHTML = htmlContent; // Display the generated HTML or error
         summaryDiv.style.display = 'block'; // Ensure it's visible
     } else {
-        console.error("Summary div not available to display text.");
+        console.error("Summary div not available to display content.");
     }
 }
 

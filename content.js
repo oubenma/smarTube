@@ -19,7 +19,7 @@ function injectSummarizeButton() {
         // Apply theme class based on storage (needed if button styles depend on theme class on parent)
         // Although current CSS targets button directly, this is good practice if needed later
         chrome.storage.sync.get(['theme'], (result) => {
-            applyTheme(result.theme || 'light'); // Apply theme to container which might affect button via CSS
+            applyTheme(result.theme || 'auto'); // Default to 'auto' theme
         });
 
 
@@ -61,7 +61,7 @@ function injectSummaryDivContainer() {
 
             // Apply the theme based on storage AFTER the div is in the DOM
             chrome.storage.sync.get(['theme'], (result) => {
-                applyTheme(result.theme || 'light');
+                applyTheme(result.theme || 'auto'); // Default to 'auto' theme
             });
             console.log("Summary div container injected.");
 
@@ -127,23 +127,32 @@ function handleSummarizeClick() {
 }
 
 // Function to apply the theme class
-function applyTheme(theme) {
-    if (summaryDiv) {
-        if (theme === 'dark') {
-            summaryDiv.classList.add('dark-theme');
-            // Also apply to button if its styling depends on parent class
-            const button = document.getElementById('summarize-button-ext');
-            if (button) button.classList.add('dark-theme'); // Example if needed
-        } else {
-            summaryDiv.classList.remove('dark-theme');
-            const button = document.getElementById('summarize-button-ext');
-            if (button) button.classList.remove('dark-theme'); // Example if needed
-        }
-        // Update scrollbar variables if needed (though CSS handles this now)
-        // summaryDiv.style.setProperty('--scrollbar-thumb-color', theme === 'dark' ? '#555' : '#c1c1c1');
-        // summaryDiv.style.setProperty('--scrollbar-track-color', theme === 'dark' ? '#333' : '#f1f1f1');
+// Function to apply the theme class based on the setting ('auto', 'light', 'dark')
+function applyTheme(themeSetting) {
+    if (!summaryDiv) return; // Exit if summaryDiv doesn't exist yet
+
+    let applyDarkTheme = false;
+
+    if (themeSetting === 'auto') {
+        // Detect YouTube's theme by checking the 'dark' attribute on the <html> element
+        applyDarkTheme = document.documentElement.hasAttribute('dark');
+        console.log(`Auto theme detection: YouTube is ${applyDarkTheme ? 'dark' : 'light'}`);
+    } else {
+        // Use the explicit setting
+        applyDarkTheme = themeSetting === 'dark';
     }
-} // <-- Added missing closing brace here
+
+    const button = document.getElementById('summarize-button-ext');
+
+    if (applyDarkTheme) {
+        summaryDiv.classList.add('dark-theme');
+        if (button) button.classList.add('dark-theme'); // Apply to button if needed
+    } else {
+        summaryDiv.classList.remove('dark-theme');
+        if (button) button.classList.remove('dark-theme'); // Remove from button if needed
+    }
+    console.log(`Applied theme: ${applyDarkTheme ? 'dark' : 'light'} (Setting: ${themeSetting})`);
+}
 
 // Function to display the summary (as HTML) or an error message
 function displaySummary(content, isError = false) {

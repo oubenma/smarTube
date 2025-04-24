@@ -9,61 +9,42 @@
             min-width: 200px; /* Prevent popup from being too small */
         }
         .setting {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 15px; /* Add some space below the setting */
         }
-        /* Basic toggle switch styling */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px; /* Smaller width */
-            height: 20px; /* Smaller height */
+        fieldset {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
         }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
+        legend {
+            font-weight: bold;
+            padding: 0 5px;
         }
-        .slider {
-            position: absolute;
+        label {
+            display: block; /* Make labels block elements */
+            margin-bottom: 5px; /* Space between radio options */
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 20px; /* Rounded slider */
         }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px; /* Smaller knob */
-            width: 14px;  /* Smaller knob */
-            left: 3px;    /* Adjust position */
-            bottom: 3px;  /* Adjust position */
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #2196F3; /* Blue when checked */
-        }
-        input:checked + .slider:before {
-            transform: translateX(20px); /* Move knob */
+        input[type="radio"] {
+            margin-right: 5px;
         }
     </style>
 </head>
 <body>
     <h3>Settings</h3>
     <div class="setting">
-        <label for="themeToggle">Dark Theme</label>
-        <label class="switch">
-            <input type="checkbox" id="themeToggle">
-            <span class="slider"></span>
-        </label>
+        <fieldset>
+            <legend>Theme</legend>
+            <label>
+                <input type="radio" name="theme" value="auto" id="themeAuto"> Auto (Match YouTube)
+            </label>
+            <label>
+                <input type="radio" name="theme" value="light" id="themeLight"> Light
+            </label>
+            <label>
+                <input type="radio" name="theme" value="dark" id="themeDark"> Dark
+            </label>
+        </fieldset>
     </div>
 
     <script src="popup.js"></script>

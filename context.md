@@ -15,7 +15,7 @@ The extension injects a "✨ Summarize" button onto YouTube video watch pages (`
 8.  The resulting HTML summary is displayed in a dedicated container injected into the YouTube page's secondary column.
 9.  If API keys are missing in storage, `background.js` sends an error to `content.js`, which then displays a message prompting the user to configure keys in the extension's options page.
 
-The summary container features an "X" close button in the top-right corner. The extension also includes a theme toggle (Light/Dark) accessible via a popup window when clicking the extension's toolbar icon. The chosen theme is saved and applied to the button and summary container. API keys are managed via a dedicated options page.
+The summary container features an "X" close button in the top-right corner. The extension includes theme selection (Auto/Light/Dark) accessible via a popup window. The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the button and summary container. API keys are managed via a dedicated options page.
 
 ## File Structure & Purpose
 
@@ -43,20 +43,20 @@ The summary container features an "X" close button in the top-right corner. The 
     *   Otherwise, uses the bundled Showdown library (`libs/showdown.min.js`) to convert the received Markdown summary into HTML.
     *   Displays the generated HTML (or error message) in the summary container.
     *   Uses a `MutationObserver` to handle YouTube's single-page application nature, ensuring the button is re-injected when navigating between videos.
-    *   Reads the theme preference from `chrome.storage.sync` on load and applies the corresponding CSS class (`dark-theme`) to the summary container and button.
-    *   Listens for `updateTheme` messages from `popup.js` to dynamically change the theme.
+    *   Reads the theme preference ('auto', 'light', or 'dark', defaulting to 'auto') from `chrome.storage.sync` on load. If set to 'auto', it detects YouTube's theme (via `document.documentElement.hasAttribute('dark')`) and applies the corresponding style (`.dark-theme` or base style). Otherwise, it applies the explicitly chosen theme.
+    *   Listens for `updateTheme` messages from `popup.js` (containing 'auto', 'light', or 'dark') to dynamically change the theme.
 *   **`styles.css`**:
     *   Contains all the styling for the injected elements (button, summary container, close button, scrollbars).
     *   Defines base styles (light theme) and overrides for the dark theme using a `.dark-theme` class selector.
 *   **`popup.html`**:
     *   Provides the HTML structure for the popup window accessed via the extension's toolbar icon.
-    *   Includes a toggle switch for selecting the theme (Light/Dark).
+    *   Includes radio buttons for selecting the theme ("Auto", "Light", "Dark").
     *   Links to `popup.js`.
 *   **`popup.js`**:
-    *   Handles the logic for the theme toggle switch in the popup.
-    *   Reads the current theme setting from `chrome.storage.sync` on load.
-    *   Saves the updated theme preference to `chrome.storage.sync` when the toggle is changed.
-    *   Sends a message (`updateTheme`) to the active tab's `content.js` to apply the theme change immediately.
+    *   Handles the logic for the theme radio buttons in the popup.
+    *   Reads the current theme setting ('auto', 'light', or 'dark', defaulting to 'auto') from `chrome.storage.sync` on load and updates the radio buttons.
+    *   Saves the selected theme preference ('auto', 'light', or 'dark') to `chrome.storage.sync` when a radio button is selected.
+    *   Sends a message (`updateTheme`) with the selected theme to the active tab's `content.js` to apply the theme change immediately.
 *   **`options.html`**:
     *   The HTML structure for the extension's options page.
     *   Provides input fields for Gemini and Supadata API keys, links to get the keys, a save button, and a status message area.
@@ -98,6 +98,6 @@ The summary container features an "X" close button in the top-right corner. The 
 ## Potential Improvements (from `ideas.md`)
 
 *   Better UI/UX for the close button (Implemented: "X" button added).
-*   Dark mode support (Implemented: Theme toggle added).
+*   Enhanced theme support (Implemented: Auto/Light/Dark options added, with "Auto" matching YouTube's theme).
 *   Proper Markdown rendering for summaries (Implemented: Using Showdown.js).
 *   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).

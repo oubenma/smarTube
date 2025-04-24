@@ -1,33 +1,48 @@
-const themeToggle = document.getElementById('themeToggle');
+const themeRadios = document.querySelectorAll('input[name="theme"]');
 
-// Load the current theme setting and update the toggle
+// Function to send theme update message to content script
+function sendThemeUpdate(themeValue) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0] && tabs[0].id) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "updateTheme", theme: themeValue }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.warn("Could not send theme update message to content script:", chrome.runtime.lastError.message);
+                } else {
+                    console.log("Theme update message sent to content script:", themeValue);
+                }
+            });
+        } else {
+            console.warn("Could not find active tab to send theme update message.");
+        }
+    });
+}
+
+// Load the current theme setting and update the radio buttons
 chrome.storage.sync.get(['theme'], (result) => {
-    const currentTheme = result.theme || 'light'; // Default to light theme
-    themeToggle.checked = currentTheme === 'dark';
+    // Default to 'auto' if no theme is stored yet
+    const currentTheme = result.theme || 'auto';
+    const radioToCheck = document.getElementById(`theme${currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)}`); // e.g., themeAuto, themeLight
+    if (radioToCheck) {
+        radioToCheck.checked = true;
+    } else {
+        // Fallback if ID construction fails (shouldn't happen with current IDs)
+        document.getElementById('themeAuto').checked = true;
+    }
+    console.log('Loaded theme:', currentTheme);
 });
 
-// Listen for changes on the toggle
-themeToggle.addEventListener('change', () => {
-    const newTheme = themeToggle.checked ? 'dark' : 'light';
+// Listen for changes on any radio button
+themeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (radio.checked) {
+            const newTheme = radio.value; // 'auto', 'light', or 'dark'
 
-    // Save the new theme setting
-    chrome.storage.sync.set({ theme: newTheme }, () => {
-        console.log('Theme set to ' + newTheme);
-
-        // Send a message to the active content script(s) to update the theme
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0] && tabs[0].id) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: "updateTheme", theme: newTheme }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        // Handle potential errors (e.g., content script not ready or page not supported)
-                        console.warn("Could not send theme update message to content script:", chrome.runtime.lastError.message);
-                    } else {
-                        console.log("Theme update message sent to content script.");
-                    }
-                });
-            } else {
-                console.warn("Could not find active tab to send theme update message.");
-            }
-        });
+            // Save the new theme setting
+            chrome.storage.sync.set({ theme: newTheme }, () => {
+                console.log('Theme saved:', newTheme);
+                // Send update message to content script
+                sendThemeUpdate(newTheme);
+            });
+        }
     });
 });

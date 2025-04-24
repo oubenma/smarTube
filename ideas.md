@@ -1,5 +1,5 @@
-add close button at the top right of the div as "X"
-make a dark theme of the buttons and divs
-the response of Gemini returned as markdow, display it correctly in the div
-remove console.logs later
-add api key from options later
+- fix the top header that contains title and X close button
+- make theme by default as the color of youtube, dark theme or white theme
+- remove console.logs later
+- create a custom api instead of calling gemini and suppadata from extension
+- the pop up should show in two ways, the current way after clicking on the button summurize, the other way is that the box of summary should be shown by default with a button inside it "summurize", the second mode should be by default, and we can change this by togling some button in settings

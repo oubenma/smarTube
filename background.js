@@ -124,7 +124,13 @@ async function callGeminiAPI(transcriptText) { // Parameter changed from videoUr
     console.log("Calling Gemini API to summarize transcript (length:", transcriptText.length, ")"); // Updated log
 
     // Updated prompt to summarize the provided text
-    const prompt = `Please provide a detailed summary of the following video transcript. Focus on the key topics, main points, and any significant conclusions or information presented:\n\n---\n\n${transcriptText}\n\n---\n\nSummary:`;
+    // const prompt = `Please provide a detailed summary of the following video transcript. Focus on the key topics, main points, and any significant conclusions or information presented:\n\n---\n\n${transcriptText}\n\n---\n\nSummary:`;
+    const prompt = `Summarize the following video transcript into brief sentences of key points, then provide complete highlighted information in a list, choosing an appropriate emoji for each highlight.
+Your output should use the following format: 
+### Summary
+{brief summary of this content}
+### Highlights
+- [Emoji] Bullet point with complete explanation :\n\n---\n\n${transcriptText}`;
 
     // var prompt = `give me list of 5 big cities in japan`; // Keep example commented out
     try {

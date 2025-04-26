@@ -4,39 +4,40 @@
     "version": "1.0",
     "description": "Adds a button to YouTube videos to generate a summary using Gemini.",
     "permissions": [
-      "activeTab",
-      "scripting",
-      "storage"
+        "activeTab",
+        "scripting",
+        "storage"
     ],
     "host_permissions": [
-      "https://generativelanguage.googleapis.com/"
+        "https://generativelanguage.googleapis.com/",
+        "https://api.supadata.ai/"
     ],
     "background": {
-      "service_worker": "background.js"
+        "service_worker": "background.js"
     },
     "content_scripts": [
-      {
-        "matches": ["*://*.youtube.com/watch*"],
-        "js": ["libs/showdown.min.js", "content.js"],
-        "css": ["styles.css"]
-      }
+        {
+            "matches": ["*://*.youtube.com/watch*"],
+            "js": ["libs/showdown.min.js", "content.js"],
+            "css": ["styles.css"]
+        }
     ],
     "action": {
-      "default_icon": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        },
+        "default_title": "YouTube Summarizer Settings",
+        "default_popup": "options.html"
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    },
+    "icon": {
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
-      },
-      "default_title": "YouTube Summarizer Settings",
-      "default_popup": "popup.html"
-    },
-    "options_ui": {
-      "page": "options.html",
-      "open_in_tab": true
-    },
-    "icons": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
     }
-  }
+}

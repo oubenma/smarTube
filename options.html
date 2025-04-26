@@ -3,9 +3,44 @@
 <head>
     <title>YouTube Summarizer Options</title>
     <link rel="stylesheet" href="options.css">
+    <style>
+        fieldset {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        legend {
+            font-weight: bold;
+            padding: 0 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+        input[type="radio"] {
+            margin-right: 5px;
+        }
+    </style>
 </head>
 <body>
     <h1>YouTube Summarizer Options</h1>
+
+    <div class="option-item">
+        <fieldset>
+            <legend>Theme Settings</legend>
+            <label>
+                <input type="radio" name="theme" value="auto" id="themeAuto"> Auto (Match YouTube)
+            </label>
+            <label>
+                <input type="radio" name="theme" value="light" id="themeLight"> Light
+            </label>
+            <label>
+                <input type="radio" name="theme" value="dark" id="themeDark"> Dark
+            </label>
+        </fieldset>
+    </div>
 
     <div class="option-item">
         <label for="geminiApiKey">Gemini API Key:</label>
@@ -17,7 +52,6 @@
         <label for="supadataApiKey">Supadata API Key:</label>
         <input type="password" id="supadataApiKey" name="supadataApiKey" size="50">
         <a href="https://supadata.ai/" target="_blank" class="help-link">Get Supadata Key</a>
-        <!-- Note: Update this link if Supadata has a more specific API key page -->
     </div>
 
     <div class="option-item">
@@ -31,7 +65,7 @@
         </select>
     </div>
 
-    <button id="saveButton">Save Keys</button>
+    <button id="saveButton">Save Settings</button>
     <span id="statusMessage"></span>
 
     <script src="options.js"></script>

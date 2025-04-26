@@ -11,10 +11,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getSummary") {
         console.log("Background script received getSummary request for URL:", request.url);
 
-        // 1. Get API Keys from storage
-        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey'], (items) => {
+        // 1. Get API Keys and Language Preference from storage
+        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey', 'summaryLanguage'], (items) => {
             const geminiApiKey = items.geminiApiKey;
             const supadataApiKey = items.supadataApiKey;
+            const language = items.summaryLanguage || 'auto'; // Default to 'auto' if not set
 
             // 2. Validate Keys
             if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
@@ -31,8 +32,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     if (!transcript || transcript.trim().length === 0) {
                         throw new Error("Received empty or invalid transcript from Supadata.");
                     }
-                    console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API...");
-                    return callGeminiAPI(transcript, geminiApiKey); // Pass transcript and key
+                    console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API with language:", language);
+                    return callGeminiAPI(transcript, geminiApiKey, language); // Pass transcript, key, and language
                 })
                 .then(summary => {
                     console.log("Sending summary back to content script.");
@@ -119,19 +120,35 @@ async function getTranscript(videoUrl, supadataApiKey) { // Added apiKey paramet
 
 
 // Function to summarize transcript text using Gemini API
-async function callGeminiAPI(transcriptText, geminiApiKey) { // Added apiKey parameter
-    console.log("Calling Gemini API to summarize transcript (length:", transcriptText.length, ")");
+async function callGeminiAPI(transcriptText, geminiApiKey, language) { // Added apiKey and language parameters
+    console.log(`Calling Gemini API to summarize transcript (length: ${transcriptText.length}) in language: ${language}`);
 
     // Construct API URL dynamically
     const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
 
-    // Updated prompt
+    // Construct the prompt based on the selected language
+    let languageInstruction = "";
+    if (language === 'auto') {
+        languageInstruction = "Generate the summary and highlights in the primary language used within the provided transcript.";
+    } else {
+        const languageMap = {
+            'en': 'English',
+            'ar': 'Arabic',
+            'fr': 'French',
+            'es': 'Spanish'
+        };
+        const targetLanguage = languageMap[language] || 'English'; // Default to English if somehow invalid
+        languageInstruction = `Generate the summary and highlights **in ${targetLanguage}**.`;
+    }
+
     const prompt = `Summarize the following video transcript into brief sentences of key points, then provide complete highlighted information in a list, choosing an appropriate emoji for each highlight.
+${languageInstruction}
 Your output should use the following format:
 ### Summary
 {brief summary of this content}
 ### Highlights
 - [Emoji] Bullet point with complete explanation :\n\n---\n\n${transcriptText}`;
+    console.log("Generated Gemini Prompt:", prompt); // Log the generated prompt for debugging
 
     try {
         // Limit transcript size if necessary

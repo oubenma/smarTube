@@ -193,31 +193,27 @@ function displaySummary(content, isError = false) {
 
 // --- Initialization and Handling YouTube's Dynamic Loading ---
 
-// YouTube uses dynamic navigation (SPA). We need to re-run injection logic
-// when the user navigates to a new video without a full page reload.
-// A MutationObserver is a good way to watch for changes.
-
-let currentHref = document.location.href;
+// YouTube uses dynamic navigation (SPA). We need to watch for the appearance
+// of our target element directly rather than relying on URL changes
 
 const observer = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
-        // Check if the URL has changed or if nodes relevant to our injection points are added/removed
-        if (currentHref !== document.location.href) {
-            currentHref = document.location.href;
-            console.log("URL changed to:", currentHref);
-            // Wait a short moment for the new page elements to likely render
-            setTimeout(injectSummarizeButton, 1000); // Delay helps ensure elements exist
+        // Check if the mutation contains our target element
+        const targetElement = mutation.target.querySelector('#menu-container #top-level-buttons-computed') ||
+                             mutation.target.querySelector('#action-buttons #top-level-buttons-computed');
+        
+        if (targetElement && !document.getElementById('summarize-button-ext')) {
+            injectSummarizeButton();
         }
-        // More robust: check if specific nodes were added/removed near #content or #secondary
-        // This is complex, so starting with URL change detection.
     });
 });
 
-// Start observing the body for attribute changes and child list changes
-// Adjust target node and options if necessary based on YouTube's structure
+// Start observing the document body for changes
 observer.observe(document.body, {
     childList: true,
-    subtree: true
+    subtree: true,
+    attributes: false,
+    characterData: false
 });
 
 // Initial injection attempt when the script first loads

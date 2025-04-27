@@ -141,8 +141,11 @@ async function callGeminiAPI(transcriptText, geminiApiKey, language) { // Added 
         languageInstruction = `Generate the summary and highlights **in ${targetLanguage}**.`;
     }
 
+    const numbersAppearance = "Numbers should be written in normale numbers in all langues, e.g.,'1','151'. with english formatting.";
+
     const prompt = `Summarize the following video transcript into brief sentences of key points, then provide complete highlighted information in a list, choosing an appropriate emoji for each highlight.
-${languageInstruction}
+${languageInstruction}.
+${numbersAppearance}
 Your output should use the following format:
 ### Summary
 {brief summary of this content}

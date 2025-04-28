@@ -4,19 +4,21 @@ This project is a Chrome browser extension designed to summarize YouTube videos 
 
 ## Core Functionality
 
-The extension injects a "✨ Summarize" button onto YouTube video watch pages (`youtube.com/watch*`). When clicked:
+The extension injects a summary container (`#youtube-summary-container-ext`) into the YouTube video watch page's secondary column (`youtube.com/watch*`). This container is always visible upon injection.
 
-1.  `content.js` sends the video's URL to `background.js`.
-2.  `background.js` retrieves the user's Supadata and Gemini API keys, and theme settings from `chrome.storage.sync`.
-3.  If keys are found, `background.js` calls the Supadata Transcript API (`https://api.supadata.ai/v1/youtube/transcript`) using the Supadata key to fetch the video's transcript.
-4.  If transcript fetch is successful, `background.js` sends the fetched transcript text to the Google Gemini API (`gemini-1.5-flash-latest` by default) using the Gemini key, with a prompt asking for a detailed summary of the transcript.
-5.  The Gemini API returns the summary in Markdown format.
-6.  `background.js` sends this Markdown summary back to `content.js`.
-7.  `content.js` uses the bundled Showdown.js library to convert the Markdown summary into HTML.
-8.  The resulting HTML summary is displayed in a dedicated container injected into the YouTube page's secondary column.
-9.  If API keys are missing in storage, `background.js` sends an error to `content.js`, which then displays a message prompting the user to configure keys in the extension's options page.
+1.  The container initially displays a header with the title "Video Summary", a minimize (-) button, and a settings (⚙️) button. Below the header, a "✨ Show Summary" button is shown.
+2.  Clicking the header area (but not the buttons) or the minimize (-) button toggles the visibility of the container's body (collapsing/expanding it).
+3.  Clicking the settings (⚙️) button opens the extension's options page.
+4.  Clicking the "✨ Show Summary" button:
+    *   Replaces the button with a loading message.
+    *   `content.js` sends the video's URL to `background.js`.
+    *   `background.js` retrieves API keys and theme settings from `chrome.storage.sync`.
+    *   If keys are valid, `background.js` fetches the transcript (Supadata API) and then generates the summary (Gemini API).
+    *   `background.js` sends the Markdown summary (or an error) back to `content.js`.
+    *   `content.js` converts the Markdown to HTML (using Showdown.js) and displays it in the container's body, replacing the loading message.
+    *   If API keys are missing, an error message with instructions to configure them is displayed instead.
 
-The summary container features an "X" close button in the top-right corner. The extension includes theme selection (Auto/Light/Dark). The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the button and summary container. API keys and theme settings are managed via a dedicated options page. Clicking the extension icon now directly opens the options page.
+The extension includes theme selection (Auto/Light/Dark). The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the summary container. API keys and theme settings are managed via a dedicated options page. Clicking the extension icon now directly opens the options page.
 
 ## File Structure & Purpose
 
@@ -34,20 +36,23 @@ The summary container features an "X" close button in the top-right corner. The 
     *   If keys are present, calls the Supadata Transcript API (using the Supadata key) and then the Gemini API (using the Gemini key and the transcript).
     *   Handles API responses, extracts the Markdown summary text from Gemini, and manages potential errors from storage access and both API calls.
     *   Sends the Markdown summary or an error message (including a specific `API_KEYS_MISSING` error if keys aren't configured) back to `content.js`.
+    *   Listens for `openOptionsPage` messages from `content.js` and opens the extension's options page.
 *   **`content.js`**:
     *   Responsible for interacting with the YouTube page's DOM.
-    *   Injects the "✨ Summarize" button near the like/dislike buttons.
-    *   Injects a `div` container (`#youtube-summary-container-ext`) into the secondary column to display the summary. This container is initially hidden and includes an "X" close button in the top-right corner.
-    *   Handles clicks on the "Summarize" button, displays a loading state, and sends the video URL to `background.js`.
+    *   Injects a `div` container (`#youtube-summary-container-ext`) into the secondary column. This container is visible by default.
+    *   The container has a sticky header (`#summary-header-ext`) with a title, minimize button (`#minimize-summary-btn`), and settings button (`#settings-summary-btn`).
+    *   The container has a body (`#summary-body-ext`) which initially contains a "Show Summary" button (`#show-summary-btn-ext`).
+    *   Handles clicks on the header (toggles collapse), minimize button (toggles collapse), and settings button (sends `openOptionsPage` message to `background.js`).
+    *   Handles clicks on the "Show Summary" button: displays loading state, sends video URL to `background.js`, and replaces the button with the content area (`#summary-content-ext`).
     *   Receives the Markdown summary (or error message) from `background.js`.
-    *   If an `API_KEYS_MISSING` error is received, displays a message prompting the user to configure keys in the options page.
+    *   If an `API_KEYS_MISSING` error is received, displays a message prompting the user to configure keys.
     *   Otherwise, uses the bundled Showdown library (`libs/showdown.min.js`) to convert the received Markdown summary into HTML.
-    *   Displays the generated HTML (or error message) in the summary container.
-    *   Uses a `MutationObserver` to handle YouTube's single-page application nature, ensuring the button is re-injected when navigating between videos.
-    *   Reads the theme preference ('auto', 'light', or 'dark', defaulting to 'auto') from `chrome.storage.sync` on load. If set to 'auto', it detects YouTube's theme (via `document.documentElement.hasAttribute('dark')`) and applies the corresponding style (`.dark-theme` or base style). Otherwise, it applies the explicitly chosen theme.
-    *   Listens for `updateTheme` messages from `options.js` (containing 'auto', 'light', or 'dark') to dynamically change the theme.
+    *   Displays the generated HTML (or error message) in the `#summary-content-ext` div.
+    *   Uses a `MutationObserver` to handle YouTube's dynamic loading, ensuring the container is injected when the secondary column appears.
+    *   Reads the theme preference ('auto', 'light', or 'dark') from `chrome.storage.sync` on load and applies the corresponding theme class (`.dark-theme`) to the container.
+    *   Listens for `updateTheme` messages from `options.js` to dynamically change the theme.
 *   **`styles.css`**:
-    *   Contains all the styling for the injected elements (button, summary container, close button, scrollbars).
+    *   Contains all the styling for the injected elements (summary container, header, body, buttons, scrollbars).
     *   Defines base styles (light theme) and overrides for the dark theme using a `.dark-theme` class selector.
 *   **`options.html`**:
     *   The HTML structure for the extension's options page.
@@ -87,7 +92,8 @@ The summary container features an "X" close button in the top-right corner. The 
 
 ## Potential Improvements (from `ideas.md`)
 
-*   Better UI/UX for the close button (Implemented: "X" button added).
+*   Better UI/UX for container controls (Implemented: Sticky header with minimize/settings buttons).
 *   Enhanced theme support (Implemented: Auto/Light/Dark options added, with "Auto" matching YouTube's theme).
 *   Proper Markdown rendering for summaries (Implemented: Using Showdown.js).
 *   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).
+*   Initial state shows container with button (Implemented).

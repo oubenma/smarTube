@@ -2,43 +2,6 @@ console.log("YouTube Summarizer content script loaded.");
 
 let summaryDiv = null; // Keep track of the summary div
 
-// Function to create and inject the summarize button
-function injectSummarizeButton() {
-    // Target the area where like/dislike buttons are. Selector might need updates if YouTube changes layout.
-    // Trying a selector that's usually stable near the like/dislike/share buttons.
-    const targetElement = document.querySelector("#menu-container #top-level-buttons-computed, #actions #menu #top-level-buttons-computed");
-
-    if (targetElement && !document.getElementById('summarize-button-ext')) {
-        console.log("Target element found:", targetElement);
-
-        const summarizeButton = document.createElement('button');
-        summarizeButton.id = 'summarize-button-ext';
-        summarizeButton.textContent = '✨ Summarize';
-        // Styles moved to styles.css
-
-        // Apply theme class based on storage (needed if button styles depend on theme class on parent)
-        // Although current CSS targets button directly, this is good practice if needed later
-        chrome.storage.sync.get(['theme'], (result) => {
-            applyTheme(result.theme || 'auto'); // Default to 'auto' theme
-        });
-
-
-        summarizeButton.addEventListener('click', handleSummarizeClick);
-
-        // Insert the button - append it within the target container
-        targetElement.appendChild(summarizeButton);
-        console.log("Summarize button injected.");
-
-        // Also ensure the summary div container exists
-        injectSummaryDivContainer();
-
-    } else if (!targetElement) {
-        // console.warn("Target element for button injection not found yet.");
-    } else {
-        // console.log("Summarize button already exists.");
-    }
-}
-
 // Function to create the container for the summary display
 function injectSummaryDivContainer() {
     if (!document.getElementById('youtube-summary-container-ext')) {
@@ -46,14 +9,20 @@ function injectSummaryDivContainer() {
         if (secondaryColumn) {
             summaryDiv = document.createElement('div');
             summaryDiv.id = 'youtube-summary-container-ext';
-            // Most styles moved to styles.css
-            summaryDiv.style.display = 'none'; // Initially hidden
+            // Styles primarily in styles.css - container is visible by default
 
-            // Set inner HTML (styles are now primarily in styles.css)
+            // Set initial inner HTML with header and body structure
             summaryDiv.innerHTML = `
-                <button id="close-summary-x-btn" title="Close Summary">&times;</button>
-                <strong>Video Summary</strong>
-                <div id="summary-content-ext"></div>
+                <div id="summary-header-ext">
+                    <span>Video Summary</span>
+                    <div id="summary-header-buttons">
+                        <button id="minimize-summary-btn" title="Minimize/Expand">-</button>
+                        <button id="settings-summary-btn" title="Settings">⚙️</button>
+                    </div>
+                </div>
+                <div id="summary-body-ext">
+                    <button id="show-summary-btn-ext">✨ Show Summary</button>
+                </div>
             `;
 
             // Insert the summary div at the top of the secondary column
@@ -65,10 +34,37 @@ function injectSummaryDivContainer() {
             });
             console.log("Summary div container injected.");
 
-            // Add event listener for the NEW close button
-            document.getElementById('close-summary-x-btn').addEventListener('click', () => {
-                summaryDiv.style.display = 'none';
+            // Function to toggle collapse state
+            const toggleCollapse = () => {
+                summaryDiv.classList.toggle('collapsed');
+            };
+
+            // Add event listener for the minimize button
+            summaryDiv.querySelector('#minimize-summary-btn').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent header click listener from firing
+                toggleCollapse();
             });
+
+            // Add event listener for the settings button
+            summaryDiv.querySelector('#settings-summary-btn').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent header click listener from firing
+                console.log("Settings button clicked - sending message to open options page.");
+                chrome.runtime.sendMessage({ action: "openOptionsPage" });
+            });
+
+            // Add event listener for the header (toggles body visibility)
+            summaryDiv.querySelector('#summary-header-ext').addEventListener('click', (event) => {
+                // Only toggle if the click wasn't on the buttons inside the header
+                if (!event.target.closest('#summary-header-buttons')) {
+                     toggleCollapse();
+                }
+            });
+
+            // Add event listener for the "Show Summary" button (if it exists)
+            const showSummaryButton = summaryDiv.querySelector('#show-summary-btn-ext');
+            if (showSummaryButton) {
+                showSummaryButton.addEventListener('click', handleShowSummaryClick);
+            }
 
         } else {
             console.warn("Secondary column not found for summary div injection.");
@@ -76,17 +72,19 @@ function injectSummaryDivContainer() {
     }
 }
 
-
-// Handle the button click
-function handleSummarizeClick() {
+// Handle the "Show Summary" button click
+function handleShowSummaryClick() {
     const videoUrl = window.location.href;
-    console.log("Summarize button clicked for URL:", videoUrl);
+    console.log("Show Summary button clicked for URL:", videoUrl);
 
     if (summaryDiv) {
-        const contentArea = summaryDiv.querySelector('#summary-content-ext');
-        contentArea.innerHTML = "<i>Generating summary... Please wait.</i> ✨";
-        summaryDiv.style.display = 'block'; // Show the container
-        summaryDiv.scrollTop = 0; // Scroll to top
+        const summaryBody = summaryDiv.querySelector('#summary-body-ext');
+        // Replace button with loading message and content area
+        summaryBody.innerHTML = `
+            <strong>Video Summary</strong>
+            <div id="summary-content-ext"><i>Generating summary... Please wait.</i> ✨</div>
+        `;
+        summaryDiv.scrollTop = 0; // Scroll container to top
     } else {
         console.error("Summary div not found!");
         alert("Error: Could not find the summary display area.");
@@ -97,7 +95,7 @@ function handleSummarizeClick() {
     chrome.runtime.sendMessage({ action: "getSummary", url: videoUrl }, (response) => {
         if (chrome.runtime.lastError) {
             console.error("Error sending message:", chrome.runtime.lastError.message);
-            displaySummary("Error communicating with background script: " + chrome.runtime.lastError.message);
+            displaySummary("Error communicating with background script: " + chrome.runtime.lastError.message, true);
             return;
         }
 
@@ -126,7 +124,7 @@ function handleSummarizeClick() {
     });
 }
 
-// Function to apply the theme class
+
 // Function to apply the theme class based on the setting ('auto', 'light', 'dark')
 function applyTheme(themeSetting) {
     if (!summaryDiv) return; // Exit if summaryDiv doesn't exist yet
@@ -142,21 +140,19 @@ function applyTheme(themeSetting) {
         applyDarkTheme = themeSetting === 'dark';
     }
 
-    const button = document.getElementById('summarize-button-ext');
-
+    // Apply theme class to the main container
     if (applyDarkTheme) {
         summaryDiv.classList.add('dark-theme');
-        if (button) button.classList.add('dark-theme'); // Apply to button if needed
     } else {
         summaryDiv.classList.remove('dark-theme');
-        if (button) button.classList.remove('dark-theme'); // Remove from button if needed
     }
     console.log(`Applied theme: ${applyDarkTheme ? 'dark' : 'light'} (Setting: ${themeSetting})`);
 }
 
 // Function to display the summary (as HTML) or an error message
 function displaySummary(content, isError = false) {
-    if (summaryDiv) {
+    // Ensure summaryDiv and the dynamically added content area exist
+    if (summaryDiv && summaryDiv.querySelector('#summary-content-ext')) {
         const contentArea = summaryDiv.querySelector('#summary-content-ext');
         let htmlContent = '';
 
@@ -165,11 +161,8 @@ function displaySummary(content, isError = false) {
             htmlContent = `<strong>Error:</strong> ${content}`;
         } else {
             // Use Showdown to convert Markdown summary to HTML
-            // Ensure Showdown library is loaded (should be via manifest.json)
             if (typeof showdown !== 'undefined') {
                 const converter = new showdown.Converter({
-                    // Optional: Configure Showdown options here if needed
-                    // e.g., tables: true, strikethrough: true
                     simplifiedAutoLink: true,
                     strikethrough: true,
                     tables: true,
@@ -184,9 +177,9 @@ function displaySummary(content, isError = false) {
         }
 
         contentArea.innerHTML = htmlContent; // Display the generated HTML or error
-        summaryDiv.style.display = 'block'; // Ensure it's visible
+        // No longer need to set display: block here, container is always visible
     } else {
-        console.error("Summary div not available to display content.");
+        console.error("Summary div or content area not available to display content.");
     }
 }
 
@@ -194,21 +187,17 @@ function displaySummary(content, isError = false) {
 // --- Initialization and Handling YouTube's Dynamic Loading ---
 
 // YouTube uses dynamic navigation (SPA). We need to watch for the appearance
-// of our target element directly rather than relying on URL changes
+// of the secondary column to inject our container.
 
 const observer = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-        // Check if the mutation contains our target element
-        const targetElement = mutation.target.querySelector('#menu-container #top-level-buttons-computed') ||
-                             mutation.target.querySelector('#action-buttons #top-level-buttons-computed');
-        
-        if (targetElement && !document.getElementById('summarize-button-ext')) {
-            injectSummarizeButton();
-        }
-    });
+    // Check if the secondary column exists and our container isn't already there
+    if (document.getElementById('secondary') && !document.getElementById('youtube-summary-container-ext')) {
+        injectSummaryDivContainer();
+    }
+    // Optional: More robust check if needed, e.g., observing specific elements added/removed
 });
 
-// Start observing the document body for changes
+// Start observing the document body for changes that might add the secondary column
 observer.observe(document.body, {
     childList: true,
     subtree: true,
@@ -217,14 +206,12 @@ observer.observe(document.body, {
 });
 
 // Initial injection attempt when the script first loads
-// Use an interval to wait for the target element to appear, as it might not be ready immediately
+// Use an interval to wait for the secondary column to appear
 const initialCheckInterval = setInterval(() => {
-    const targetElement = document.querySelector("#menu-container #top-level-buttons-computed, #actions #menu #top-level-buttons-computed");
     const secondaryColumn = document.getElementById('secondary');
-    if (targetElement && secondaryColumn) {
+    if (secondaryColumn) {
         clearInterval(initialCheckInterval); // Stop checking
-        injectSummarizeButton();
-        injectSummaryDivContainer(); // Ensure div container is ready even if button was already there
+        injectSummaryDivContainer(); // Inject the container if the column is found
     }
 }, 500); // Check every 500ms
 

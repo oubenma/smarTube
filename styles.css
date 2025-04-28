@@ -1,37 +1,79 @@
 /* --- Base Styles (Light Theme) --- */
 
-#summarize-button-ext {
-    margin-left: 8px;
-    padding: 8px 12px;
-    cursor: pointer;
-    background-color: #f1f1f1;
-    border: 1px solid #ccc;
-    border-radius: 18px; /* Match YouTube's style */
-    font-size: 14px;
-    font-weight: 500; /* Match YouTube's style */
-    line-height: 20px; /* Match YouTube's style */
-    color: #333; /* Default text color */
-    transition: background-color 0.2s;
-}
-
-#summarize-button-ext:hover {
-    background-color: #e0e0e0;
-}
-
 #youtube-summary-container-ext {
     background-color: #f9f9f9;
     border: 1px solid #ddd;
-    padding: 15px;
+    /* padding removed, handled by header/body */
     margin-top: 15px;
     border-radius: 12px;
-    max-height: 400px;
-    overflow-y: auto;
+    /* max-height removed, handled by body */
+    /* overflow-y removed, handled by body */
     font-size: 14px;
     line-height: 1.6;
     color: #333; /* Default text color */
-    position: relative; /* For positioning close button */
+    position: relative; /* Keep for potential absolute positioning needs if any arise */
+    overflow: hidden; /* Contain sticky header */
+}
 
-    /* Scrollbar variables (used by JS potentially, but define defaults) */
+#summary-header-ext {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 15px; /* Reduced padding */
+    background-color: #f1f1f1; /* Slightly different header bg */
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    cursor: pointer;
+}
+
+#summary-header-ext span {
+    font-weight: 500; /* Match YouTube's style */
+    font-size: 16px;
+    color: #333;
+}
+
+#summary-header-buttons {
+    display: flex; /* Align buttons horizontally */
+    align-items: center;
+    margin-left: 10px; /* Space from title */
+}
+
+#summary-header-buttons button {
+    background: none;
+    border: none;
+    font-size: 18px; /* Adjust size as needed */
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+    padding: 0 4px; /* Adjust padding */
+    line-height: 1;
+    transition: color 0.2s;
+    margin-left: 4px; /* Space between buttons */
+}
+
+#summary-header-buttons button:hover {
+    color: #000;
+}
+
+/* Specific style for minimize button if needed */
+#minimize-summary-btn {
+    font-size: 22px; /* Make '-' slightly larger/bolder if desired */
+}
+
+/* Specific style for settings button if needed */
+#settings-summary-btn {
+     /* Emoji size is usually fine, adjust font-size if needed */
+}
+
+
+#summary-body-ext {
+    padding: 15px;
+    max-height: 350px; /* Example max height */
+    overflow-y: auto;
+
+    /* Scrollbar variables */
     --scrollbar-thumb-color: #c1c1c1;
     --scrollbar-track-color: #f1f1f1;
 
@@ -40,98 +82,114 @@
     scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color); /* Firefox */
 }
 
-/* Webkit Scrollbar */
-#youtube-summary-container-ext::-webkit-scrollbar {
+/* Webkit Scrollbar for Body */
+#summary-body-ext::-webkit-scrollbar {
     width: 8px;
 }
-#youtube-summary-container-ext::-webkit-scrollbar-track {
+#summary-body-ext::-webkit-scrollbar-track {
     background: var(--scrollbar-track-color);
     border-radius: 10px;
 }
-#youtube-summary-container-ext::-webkit-scrollbar-thumb {
+#summary-body-ext::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb-color);
     border-radius: 10px;
 }
-#youtube-summary-container-ext::-webkit-scrollbar-thumb:hover {
-    background: #555; /* Slightly darker on hover */
+#summary-body-ext::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8; /* Slightly darker */
 }
 
-#youtube-summary-container-ext strong {
+#show-summary-btn-ext {
+    display: block; /* Center block */
+    margin: 20px auto; /* Center horizontally */
+    padding: 8px 12px;
+    cursor: pointer;
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    border-radius: 18px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: #333;
+    transition: background-color 0.2s;
+}
+
+#show-summary-btn-ext:hover {
+    background-color: #e0e0e0;
+}
+
+/* Content styling within the body */
+#summary-content-ext strong { /* Title inside body */
     display: block;
     margin-bottom: 10px;
     font-size: 16px;
     color: #333;
-    padding-right: 25px; /* Space for close button */
 }
 
-#youtube-summary-container-ext p {
+#summary-content-ext p {
     margin-bottom: 10px;
 }
 
-#youtube-summary-container-ext ul {
+#summary-content-ext ul {
     margin-left: 20px;
     margin-bottom: 10px;
 }
 
-#close-summary-x-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    font-weight: bold;
-    color: #666;
-    cursor: pointer;
-    padding: 0 5px;
-    line-height: 1;
-    transition: color 0.2s;
+/* Collapsed state */
+#youtube-summary-container-ext.collapsed #summary-body-ext {
+    display: none;
 }
 
-#close-summary-x-btn:hover {
-    color: #000;
-}
 
 /* --- Dark Theme Overrides --- */
 
-.dark-theme#youtube-summary-container-ext, /* Target container with class */
-#youtube-summary-container-ext.dark-theme { /* Also target container with class (more specific) */
+#youtube-summary-container-ext.dark-theme {
     background-color: #282828; /* Dark background */
     border-color: #444;       /* Darker border */
     color: #eee;             /* Light text */
+}
 
+#youtube-summary-container-ext.dark-theme #summary-header-ext {
+    background-color: #333; /* Darker header bg */
+    border-bottom-color: #444;
+}
+
+#youtube-summary-container-ext.dark-theme #summary-header-ext span {
+    color: #eee; /* Light title text */
+}
+
+#youtube-summary-container-ext.dark-theme #summary-header-buttons button {
+    color: #aaa; /* Lighter buttons */
+}
+
+#youtube-summary-container-ext.dark-theme #summary-header-buttons button:hover {
+    color: #fff; /* White on hover */
+}
+
+#youtube-summary-container-ext.dark-theme #summary-body-ext {
     --scrollbar-thumb-color: #555; /* Darker scrollbar thumb */
     --scrollbar-track-color: #333; /* Darker scrollbar track */
 }
 
-/* Target the button directly when it has the dark-theme class */
-#summarize-button-ext.dark-theme {
+#youtube-summary-container-ext.dark-theme #summary-body-ext::-webkit-scrollbar-thumb:hover {
+    background: #777; /* Lighter hover for dark scrollbar */
+}
+
+#youtube-summary-container-ext.dark-theme #show-summary-btn-ext {
     background-color: #444;
     border-color: #666;
     color: #eee;
 }
 
-#summarize-button-ext.dark-theme:hover {
+#youtube-summary-container-ext.dark-theme #show-summary-btn-ext:hover {
     background-color: #555;
 }
 
-/* Target elements within the dark-themed container */
-.dark-theme#youtube-summary-container-ext strong,
-#youtube-summary-container-ext.dark-theme strong {
-    color: #eee; /* Light title text */
+/* Dark theme content styling */
+#youtube-summary-container-ext.dark-theme #summary-content-ext strong {
+    color: #eee;
 }
 
-.dark-theme#youtube-summary-container-ext #close-summary-x-btn,
-#youtube-summary-container-ext.dark-theme #close-summary-x-btn {
-    color: #aaa; /* Lighter close button */
-}
-
-.dark-theme#youtube-summary-container-ext #close-summary-x-btn:hover,
-#youtube-summary-container-ext.dark-theme #close-summary-x-btn:hover {
-    color: #fff; /* White on hover */
-}
-
-.dark-theme#youtube-summary-container-ext::-webkit-scrollbar-thumb:hover,
-#youtube-summary-container-ext.dark-theme::-webkit-scrollbar-thumb:hover {
-    background: #777; /* Lighter hover for dark scrollbar */
+/* Ensure base text color is also overridden */
+#youtube-summary-container-ext.dark-theme #summary-body-ext {
+    color: #eee;
 }

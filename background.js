@@ -8,6 +8,7 @@ const API_KEYS_MISSING_ERROR = "API_KEYS_MISSING"; // Constant for error type
 // Listen for messages from the content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background script received message:", request.action);
+
     if (request.action === "getSummary") {
         console.log("Background script received getSummary request for URL:", request.url);
 
@@ -21,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
                 console.error("API Keys missing or invalid in storage.");
                 sendResponse({ error: API_KEYS_MISSING_ERROR }); // Send specific error code
-                return; // Stop processing
+                return; // Stop processing within this callback
             }
 
             console.log("API Keys retrieved successfully.");
@@ -56,9 +57,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 });
         });
 
-        return true; // Indicates that the response will be sent asynchronously
+        // Return true because we will send the response asynchronously
+        return true;
+
+    } else if (request.action === "openOptionsPage") {
+        console.log("Background script received openOptionsPage request.");
+        chrome.runtime.openOptionsPage();
+        // No asynchronous response needed, so we don't return true here.
     }
-    // Handle other potential actions if needed
+
+    // If other synchronous actions were added, they would go here.
+    // If no response is sent synchronously or asynchronously, Chrome might show an error
+    // in the content script's console ("The message port closed before a response was received").
+    // For actions like openOptionsPage where no response is needed, this is usually fine.
 });
 
 

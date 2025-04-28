@@ -57,11 +57,6 @@
     color: #000;
 }
 
-/* Specific style for minimize button if needed */
-#minimize-summary-btn {
-    font-size: 22px; /* Make '-' slightly larger/bolder if desired */
-}
-
 /* Specific style for settings button if needed */
 #settings-summary-btn {
      /* Emoji size is usually fine, adjust font-size if needed */

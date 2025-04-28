@@ -16,7 +16,6 @@ function injectSummaryDivContainer() {
                 <div id="summary-header-ext">
                     <span>SmarTube</span>
                     <div id="summary-header-buttons">
-                        <button id="minimize-summary-btn" title="Minimize/Expand">-</button>
                         <button id="settings-summary-btn" title="Settings">⚙️</button>
                     </div>
                 </div>
@@ -45,15 +44,9 @@ function injectSummaryDivContainer() {
                 summaryDiv.classList.toggle('collapsed');
             };
 
-            // Minimize button
-            summaryDiv.querySelector('#minimize-summary-btn').addEventListener('click', (event) => {
-                event.stopPropagation();
-                toggleCollapse();
-            });
-
             // Settings button
             summaryDiv.querySelector('#settings-summary-btn').addEventListener('click', (event) => {
-                event.stopPropagation();
+                event.stopPropagation(); // Prevent header click listener from firing
                 console.log("Settings button clicked - sending message to open options page.");
                 chrome.runtime.sendMessage({ action: "openOptionsPage" });
             });

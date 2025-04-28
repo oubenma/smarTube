@@ -6,6 +6,9 @@ const SUPADATA_API_BASE_URL = "https://api.supadata.ai/v1/youtube/transcript";
 const API_KEYS_MISSING_ERROR = "API_KEYS_MISSING"; // Constant for error type
 
 // Listen for messages from the content script
+console.log("SmarTube background service worker started.");
+
+// Listen for messages from the content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background script received message:", request.action);
 

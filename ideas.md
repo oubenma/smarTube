@@ -1,8 +1,6 @@
 - fix the top header that contains title and X close button
-- make theme by default as the color of youtube, dark theme or white theme
 - remove console.logs later
 - create a custom api instead of calling gemini and suppadata from extension
-- the pop up should show in two ways, the current way after clicking on the button summurize, the other way is that the box of summary should be shown by default with a button inside it "summurize", the second mode should be by default, and we can change this by togling some button in settings
-- add the option of selecting the language of summuries, there is also an option of auto, that answers based on the language of the video
 - add an option of add customazed prompts for summurizing videos
 - add time stamp for each idea
+- fix the problem when navigation between multiple videos

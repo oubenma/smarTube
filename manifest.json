@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "YouTube Summarizer (Gemini)",
+    "name": "SmarTube",
     "version": "1.0",
-    "description": "Adds a button to YouTube videos to generate a summary using Gemini.",
+    "description": "Summarize YouTube videos and ask questions using Gemini.",
     "permissions": [
         "activeTab",
         "scripting",
@@ -28,7 +28,7 @@
             "48": "icons/icon48.png",
             "128": "icons/icon128.png"
         },
-        "default_title": "YouTube Summarizer Settings",
+        "default_title": "SmarTube Settings",
         "default_popup": "options.html"
     },
     "options_ui": {

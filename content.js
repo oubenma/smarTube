@@ -1,4 +1,4 @@
-console.log("YouTube Summarizer content script loaded.");
+console.log("SmarTube content script loaded.");
 
 let summaryDiv = null; // Keep track of the summary div
 
@@ -14,7 +14,7 @@ function injectSummaryDivContainer() {
             // Set initial inner HTML with header and body structure
             summaryDiv.innerHTML = `
                 <div id="summary-header-ext">
-                    <span>Video Summary</span>
+                    <span>SmarTube</span>
                     <div id="summary-header-buttons">
                         <button id="minimize-summary-btn" title="Minimize/Expand">-</button>
                         <button id="settings-summary-btn" title="Settings">⚙️</button>

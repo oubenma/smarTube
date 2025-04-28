@@ -1,6 +1,6 @@
-# Project Context: YouTube Summarizer (Gemini) Chrome Extension
+# Project Context: SmarTube Chrome Extension
 
-This project is a Chrome browser extension designed to summarize YouTube videos using Google's Gemini AI.
+This project is a Chrome browser extension designed to summarize YouTube videos and answer questions about them using Google's Gemini AI.
 
 ## Core Functionality
 

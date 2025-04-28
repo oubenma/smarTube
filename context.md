@@ -4,19 +4,28 @@ This project is a Chrome browser extension designed to summarize YouTube videos 
 
 ## Core Functionality
 
-The extension injects a summary container (`#youtube-summary-container-ext`) into the YouTube video watch page's secondary column (`youtube.com/watch*`). This container is always visible upon injection.
+The extension injects a summary container (`#youtube-summary-container-ext`) into the YouTube video watch page's secondary column (`youtube.com/watch*`). This container is always visible upon injection and provides both video summarization and a Q&A interface based on the transcript.
 
-1.  The container initially displays a header with the title "Video Summary", a minimize (-) button, and a settings (⚙️) button. Below the header, a "✨ Show Summary" button is shown.
+1.  The container displays a sticky header with the title "Video Summary", a minimize (-) button, and a settings (⚙️) button.
 2.  Clicking the header area (but not the buttons) or the minimize (-) button toggles the visibility of the container's body (collapsing/expanding it).
 3.  Clicking the settings (⚙️) button opens the extension's options page.
-4.  Clicking the "✨ Show Summary" button:
-    *   Replaces the button with a loading message.
+4.  The container body initially contains a "✨ Show Summary" button. Clicking this button triggers the summary generation:
+    *   The button is replaced with a loading message in the body.
     *   `content.js` sends the video's URL to `background.js`.
     *   `background.js` retrieves API keys and theme settings from `chrome.storage.sync`.
     *   If keys are valid, `background.js` fetches the transcript (Supadata API) and then generates the summary (Gemini API).
     *   `background.js` sends the Markdown summary (or an error) back to `content.js`.
     *   `content.js` converts the Markdown to HTML (using Showdown.js) and displays it in the container's body, replacing the loading message.
-    *   If API keys are missing, an error message with instructions to configure them is displayed instead.
+    *   If API keys are missing, an error message with instructions is displayed.
+5.  A sticky footer bar is present at the bottom of the container, containing a textarea input ("Ask about this video...") and a send button (➤).
+6.  Typing a question in the input and pressing Enter (or clicking the send button):
+    *   Clears the input field.
+    *   Appends the user's question to the container body in a chat-like format.
+    *   Appends a "Thinking..." message placeholder to the body.
+    *   `content.js` sends the question and video URL to `background.js`.
+    *   `background.js` fetches the transcript (if not already available/cached) and calls the Gemini API with a prompt to answer the question based *only* on the transcript.
+    *   `background.js` sends the answer (or an error) back to `content.js`.
+    *   `content.js` updates the "Thinking..." placeholder with the received answer (or error), maintaining the chat format.
 
 The extension includes theme selection (Auto/Light/Dark). The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the summary container. API keys and theme settings are managed via a dedicated options page. Clicking the extension icon now directly opens the options page.
 
@@ -37,22 +46,25 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
     *   Handles API responses, extracts the Markdown summary text from Gemini, and manages potential errors from storage access and both API calls.
     *   Sends the Markdown summary or an error message (including a specific `API_KEYS_MISSING` error if keys aren't configured) back to `content.js`.
     *   Listens for `openOptionsPage` messages from `content.js` and opens the extension's options page.
+    *   Listens for `askQuestion` messages from `content.js`, fetches the transcript (if needed), calls the Gemini API for a Q&A response, and sends the answer/error back to `content.js` via the `answerResponse` message.
 *   **`content.js`**:
     *   Responsible for interacting with the YouTube page's DOM.
     *   Injects a `div` container (`#youtube-summary-container-ext`) into the secondary column. This container is visible by default.
     *   The container has a sticky header (`#summary-header-ext`) with a title, minimize button (`#minimize-summary-btn`), and settings button (`#settings-summary-btn`).
     *   The container has a body (`#summary-body-ext`) which initially contains a "Show Summary" button (`#show-summary-btn-ext`).
+    *   The container has a sticky footer (`#summary-footer-ext`) with a textarea input (`#qa-input-ext`) and a send button (`#qa-send-btn-ext`).
     *   Handles clicks on the header (toggles collapse), minimize button (toggles collapse), and settings button (sends `openOptionsPage` message to `background.js`).
-    *   Handles clicks on the "Show Summary" button: displays loading state, sends video URL to `background.js`, and replaces the button with the content area (`#summary-content-ext`).
-    *   Receives the Markdown summary (or error message) from `background.js`.
-    *   If an `API_KEYS_MISSING` error is received, displays a message prompting the user to configure keys.
-    *   Otherwise, uses the bundled Showdown library (`libs/showdown.min.js`) to convert the received Markdown summary into HTML.
-    *   Displays the generated HTML (or error message) in the `#summary-content-ext` div.
+    *   Handles clicks on the "Show Summary" button: appends a loading message to the body, sends video URL to `background.js` for summarization.
+    *   Handles input in the Q&A textarea: sends the question to `background.js` via the `askQuestion` message when Enter is pressed (without Shift), clears the input, appends the user's question and a "Thinking..." placeholder to the body.
+    *   Handles clicks on the send button: triggers the same question submission logic as the Enter key.
+    *   Receives the summary (via `getSummary` response) or Q&A answer/error (via `answerResponse` message) from `background.js`.
+    *   Uses the `appendMessage` function to add chat-like messages (user questions, assistant responses/errors, loading states) to the body.
+    *   Uses Showdown.js to convert Markdown responses to HTML.
     *   Uses a `MutationObserver` to handle YouTube's dynamic loading, ensuring the container is injected when the secondary column appears.
-    *   Reads the theme preference ('auto', 'light', or 'dark') from `chrome.storage.sync` on load and applies the corresponding theme class (`.dark-theme`) to the container.
+    *   Reads the theme preference and applies the corresponding theme class (`.dark-theme`) to the container.
     *   Listens for `updateTheme` messages from `options.js` to dynamically change the theme.
 *   **`styles.css`**:
-    *   Contains all the styling for the injected elements (summary container, header, body, buttons, scrollbars).
+    *   Contains all the styling for the injected elements (summary container, header, body, footer, buttons, textarea, chat messages, scrollbars).
     *   Defines base styles (light theme) and overrides for the dark theme using a `.dark-theme` class selector.
 *   **`options.html`**:
     *   The HTML structure for the extension's options page.
@@ -94,6 +106,7 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
 
 *   Better UI/UX for container controls (Implemented: Sticky header with minimize/settings buttons).
 *   Enhanced theme support (Implemented: Auto/Light/Dark options added, with "Auto" matching YouTube's theme).
-*   Proper Markdown rendering for summaries (Implemented: Using Showdown.js).
+*   Proper Markdown rendering for summaries and Q&A answers (Implemented: Using Showdown.js).
 *   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).
-*   Initial state shows container with button (Implemented).
+*   Initial state shows container with summary button (Implemented).
+*   Added Q&A feature with fixed footer, input, send button, and chat-like display (Implemented).

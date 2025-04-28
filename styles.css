@@ -139,6 +139,78 @@
     display: none;
 }
 
+/* --- Q&A Footer Styles --- */
+
+#summary-footer-ext {
+    display: flex;
+    align-items: center; /* Align items vertically */
+    padding: 8px 10px;
+    border-top: 1px solid #ddd;
+    background-color: #f1f1f1; /* Match header */
+    position: sticky;
+    bottom: 0;
+    z-index: 1; /* Ensure it's above body content */
+}
+
+#qa-input-ext {
+    flex-grow: 1; /* Take available space */
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 15px; /* Rounded corners */
+    margin-right: 8px;
+    font-size: 13px;
+    line-height: 1.4; /* Adjust for textarea */
+    resize: none; /* Disable manual resize */
+    overflow-y: auto; /* Allow scrolling if needed */
+    max-height: 80px; /* Limit expansion */
+    background-color: #fff;
+    color: #333;
+}
+
+#qa-send-btn-ext {
+    background: none;
+    border: none;
+    font-size: 18px; /* Adjust icon size */
+    color: #555;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+#qa-send-btn-ext:hover {
+    color: #000;
+}
+
+/* --- Chat Message Styles --- */
+
+.message {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 18px; /* Bubble shape */
+    max-width: 85%; /* Prevent full width */
+    word-wrap: break-word; /* Break long words */
+}
+
+.user-message {
+    background-color: #e1e1e1; /* Light grey for user */
+    color: #333;
+    margin-left: auto; /* Align to right */
+    border-bottom-right-radius: 5px; /* Slightly different corner */
+}
+
+.assistant-message {
+    background-color: #f1f1f1; /* Slightly lighter grey for assistant */
+    color: #333;
+    margin-right: auto; /* Align to left */
+    border-bottom-left-radius: 5px; /* Slightly different corner */
+}
+
+/* Style for the 'Thinking...' placeholder */
+.assistant-message#thinking-placeholder i,
+.assistant-message#summary-placeholder i {
+     color: #666;
+}
 
 /* --- Dark Theme Overrides --- */
 
@@ -192,4 +264,40 @@
 /* Ensure base text color is also overridden */
 #youtube-summary-container-ext.dark-theme #summary-body-ext {
     color: #eee;
+}
+
+/* Dark theme for Q&A Footer */
+#youtube-summary-container-ext.dark-theme #summary-footer-ext {
+    background-color: #333; /* Match header */
+    border-top-color: #444;
+}
+
+#youtube-summary-container-ext.dark-theme #qa-input-ext {
+    background-color: #282828; /* Darker input bg */
+    border-color: #555;
+    color: #eee; /* Light text */
+}
+
+#youtube-summary-container-ext.dark-theme #qa-send-btn-ext {
+    color: #aaa; /* Lighter icon */
+}
+
+#youtube-summary-container-ext.dark-theme #qa-send-btn-ext:hover {
+    color: #fff; /* White on hover */
+}
+
+/* Dark theme for Chat Messages */
+#youtube-summary-container-ext.dark-theme .user-message {
+    background-color: #4f4f4f; /* Darker grey for user */
+    color: #eee;
+}
+
+#youtube-summary-container-ext.dark-theme .assistant-message {
+    background-color: #404040; /* Slightly lighter dark grey for assistant */
+    color: #eee;
+}
+
+#youtube-summary-container-ext.dark-theme .assistant-message#thinking-placeholder i,
+#youtube-summary-container-ext.dark-theme .assistant-message#summary-placeholder i {
+     color: #bbb; /* Lighter italic text */
 }

@@ -64,6 +64,61 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log("Background script received openOptionsPage request.");
         chrome.runtime.openOptionsPage();
         // No asynchronous response needed, so we don't return true here.
+    } else if (request.action === "askQuestion") {
+        console.log("Background script received askQuestion request:", request.question, "for URL:", request.url);
+
+        // 1. Get API Keys
+        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey'], (items) => {
+            const geminiApiKey = items.geminiApiKey;
+            const supadataApiKey = items.supadataApiKey;
+
+            // 2. Validate Keys
+            if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
+                console.error("API Keys missing or invalid for Q&A.");
+                // Send error back to content script using the specific message format
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs[0]?.id) {
+                        chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", error: API_KEYS_MISSING_ERROR });
+                    }
+                });
+                return; // Stop processing
+            }
+
+            console.log("API Keys retrieved for Q&A.");
+
+            // 3. Get transcript, then ask question
+            getTranscript(request.url, supadataApiKey)
+                .then(transcript => {
+                    if (!transcript || transcript.trim().length === 0) {
+                        throw new Error("Cannot answer question: Transcript is empty or invalid.");
+                    }
+                    console.log("Transcript fetched for Q&A. Calling Gemini for question.");
+                    return callGeminiForQuestion(transcript, request.question, geminiApiKey); // Pass transcript, question, key
+                })
+                .then(answer => {
+                    console.log("Sending answer back to content script.");
+                     // Send answer back using the specific message format
+                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                        if (tabs[0]?.id) {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", answer: answer });
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error("Error during Q&A process:", error);
+                    let errorMessage = `Failed to get answer: ${error.message || "Unknown error"}`;
+                     // Send error back using the specific message format
+                     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                        if (tabs[0]?.id) {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", error: errorMessage });
+                        }
+                    });
+                });
+        });
+
+        // Acknowledge receipt (optional, but good practice)
+        sendResponse({ status: "Question received, processing..." });
+        return true; // Indicates that the actual answer/error will be sent later asynchronously via chrome.tabs.sendMessage
     }
 
     // If other synchronous actions were added, they would go here.
@@ -241,3 +296,88 @@ Your output should use the following format:
 }
 
 console.log("Background service worker started.");
+
+
+// Function to ask a question about the transcript using Gemini API
+async function callGeminiForQuestion(transcriptText, question, geminiApiKey) {
+    console.log(`Calling Gemini API to answer question: "${question}"`);
+
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+
+    // Limit transcript size if necessary (apply same limit as summarization)
+    const MAX_INPUT_LENGTH = 30000;
+    if (transcriptText.length > MAX_INPUT_LENGTH) {
+        console.warn(`Transcript length (${transcriptText.length}) exceeds limit (${MAX_INPUT_LENGTH}) for Q&A. Truncating.`);
+        transcriptText = transcriptText.substring(0, MAX_INPUT_LENGTH);
+    }
+
+    // Construct the prompt for Q&A
+    const prompt = `Based **only** on the following video transcript, answer the user's question. If the answer cannot be found in the transcript, say so.
+Do not use any external knowledge.
+
+Transcript:
+---
+${transcriptText}
+---
+
+User Question: ${question}
+
+Answer:`;
+
+    console.log("Generated Gemini Q&A Prompt:", prompt);
+
+    try {
+        const response = await fetch(geminiApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "contents": [{
+                    "parts": [{
+                        "text": prompt
+                    }]
+                }],
+                 "generationConfig": {
+                     "temperature": 0.5, // Lower temperature for more factual Q&A
+                     "maxOutputTokens": 2048, // Adjust as needed
+                 },
+                 // Consider stricter safety settings for Q&A if needed
+                 // "safetySettings": [ ... ]
+            })
+        });
+
+        if (!response.ok) {
+            let errorBody = {};
+            try { errorBody = await response.json(); } catch (e) { /* Ignore */ }
+            console.error("Gemini API Q&A Error Response:", response.status, response.statusText, errorBody);
+            let detail = errorBody?.error?.message || '';
+             if (response.status === 400 && detail.includes("API key not valid")) { detail = "Invalid Gemini API Key."; }
+             else if (response.status === 429) { detail = "Gemini API rate limit exceeded or quota finished."; }
+             else if (response.status >= 500) { detail = "Gemini server error."; }
+            throw new Error(`Gemini API Q&A request failed (${response.status}): ${detail || response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("Gemini API Q&A Raw Response:", data);
+
+        // Extract the answer text
+        if (data.candidates && data.candidates.length > 0 &&
+            data.candidates[0].content && data.candidates[0].content.parts &&
+            data.candidates[0].content.parts.length > 0)
+        {
+            // Check for safety ratings / finish reason if needed
+            // if (data.candidates[0].finishReason !== 'STOP') { ... }
+            return data.candidates[0].content.parts[0].text;
+        } else if (data.error) {
+             throw new Error(`Gemini API Q&A Error: ${data.error.message}`);
+        } else {
+             console.error("Unexpected Gemini API Q&A response structure:", data);
+            throw new Error("Could not extract answer text from Gemini API response.");
+        }
+
+    } catch (error) {
+        console.error('Error during fetch to Gemini API for Q&A:', error);
+        throw new Error(`Gemini API Q&A Error: ${error.message}`);
+    }
+}

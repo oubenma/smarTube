@@ -5,3 +5,4 @@
 - the pop up should show in two ways, the current way after clicking on the button summurize, the other way is that the box of summary should be shown by default with a button inside it "summurize", the second mode should be by default, and we can change this by togling some button in settings
 - add the option of selecting the language of summuries, there is also an option of auto, that answers based on the language of the video
 - add an option of add customazed prompts for summurizing videos
+- add time stamp for each idea

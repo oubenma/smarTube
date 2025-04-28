@@ -23,6 +23,10 @@ function injectSummaryDivContainer() {
                 <div id="summary-body-ext">
                     <button id="show-summary-btn-ext">✨ Show Summary</button>
                 </div>
+                <div id="summary-footer-ext">
+                    <textarea id="qa-input-ext" rows="1" placeholder="Ask anything about this video..."></textarea>
+                    <button id="qa-send-btn-ext" title="Send">➤</button>
+                </div>
             `;
 
             // Insert the summary div at the top of the secondary column
@@ -34,37 +38,53 @@ function injectSummaryDivContainer() {
             });
             console.log("Summary div container injected.");
 
+            // --- Add Event Listeners ---
+
             // Function to toggle collapse state
             const toggleCollapse = () => {
                 summaryDiv.classList.toggle('collapsed');
             };
 
-            // Add event listener for the minimize button
+            // Minimize button
             summaryDiv.querySelector('#minimize-summary-btn').addEventListener('click', (event) => {
-                event.stopPropagation(); // Prevent header click listener from firing
+                event.stopPropagation();
                 toggleCollapse();
             });
 
-            // Add event listener for the settings button
+            // Settings button
             summaryDiv.querySelector('#settings-summary-btn').addEventListener('click', (event) => {
-                event.stopPropagation(); // Prevent header click listener from firing
+                event.stopPropagation();
                 console.log("Settings button clicked - sending message to open options page.");
                 chrome.runtime.sendMessage({ action: "openOptionsPage" });
             });
 
-            // Add event listener for the header (toggles body visibility)
+            // Header click (for collapse)
             summaryDiv.querySelector('#summary-header-ext').addEventListener('click', (event) => {
-                // Only toggle if the click wasn't on the buttons inside the header
                 if (!event.target.closest('#summary-header-buttons')) {
                      toggleCollapse();
                 }
             });
 
-            // Add event listener for the "Show Summary" button (if it exists)
+            // Initial "Show Summary" button
             const showSummaryButton = summaryDiv.querySelector('#show-summary-btn-ext');
             if (showSummaryButton) {
                 showSummaryButton.addEventListener('click', handleShowSummaryClick);
             }
+
+            // Q&A Textarea (Enter/Shift+Enter)
+            const qaInput = summaryDiv.querySelector('#qa-input-ext');
+            qaInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    if (!event.shiftKey) { // Enter only (no shift)
+                        event.preventDefault(); // Prevent newline
+                        handleQuestionSubmit();
+                    }
+                    // If Shift+Enter, default behavior (newline) is allowed
+                }
+            });
+
+            // Q&A Send Button
+            summaryDiv.querySelector('#qa-send-btn-ext').addEventListener('click', handleQuestionSubmit);
 
         } else {
             console.warn("Secondary column not found for summary div injection.");
@@ -72,19 +92,41 @@ function injectSummaryDivContainer() {
     }
 }
 
-// Handle the "Show Summary" button click
+// Function to append a message to the summary body (chat style)
+function appendMessage(htmlContent, role, id = null) {
+    if (!summaryDiv) return;
+    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
+    if (!summaryBody) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message', `${role}-message`);
+    messageDiv.innerHTML = htmlContent; // Use innerHTML to allow basic formatting
+    if (id) {
+        messageDiv.id = id;
+    }
+
+    summaryBody.appendChild(messageDiv);
+
+    // Scroll to bottom
+    summaryBody.scrollTop = summaryBody.scrollHeight;
+}
+
+
+// Handle the "Show Summary" button click - Modified for chat flow
 function handleShowSummaryClick() {
     const videoUrl = window.location.href;
     console.log("Show Summary button clicked for URL:", videoUrl);
 
     if (summaryDiv) {
         const summaryBody = summaryDiv.querySelector('#summary-body-ext');
-        // Replace button with loading message and content area
-        summaryBody.innerHTML = `
-            <strong>Video Summary</strong>
-            <div id="summary-content-ext"><i>Generating summary... Please wait.</i> ✨</div>
-        `;
-        summaryDiv.scrollTop = 0; // Scroll container to top
+        // Remove the "Show Summary" button
+        const showSummaryButton = summaryBody.querySelector('#show-summary-btn-ext');
+        if (showSummaryButton) {
+            showSummaryButton.remove();
+        }
+        // Append loading message
+        appendMessage("<i>Generating summary... Please wait.</i> ✨", 'assistant', 'summary-placeholder');
+        // summaryDiv.scrollTop = 0; // Scroll container to top - appendMessage handles scrolling
     } else {
         console.error("Summary div not found!");
         alert("Error: Could not find the summary display area.");
@@ -149,38 +191,127 @@ function applyTheme(themeSetting) {
     console.log(`Applied theme: ${applyDarkTheme ? 'dark' : 'light'} (Setting: ${themeSetting})`);
 }
 
-// Function to display the summary (as HTML) or an error message
+// Function to display the summary (as HTML) or an error message - Modified for chat flow
 function displaySummary(content, isError = false) {
-    // Ensure summaryDiv and the dynamically added content area exist
-    if (summaryDiv && summaryDiv.querySelector('#summary-content-ext')) {
-        const contentArea = summaryDiv.querySelector('#summary-content-ext');
-        let htmlContent = '';
-
-        if (isError) {
-            // Display error messages directly, maybe wrap in strong tags
-            htmlContent = `<strong>Error:</strong> ${content}`;
-        } else {
-            // Use Showdown to convert Markdown summary to HTML
-            if (typeof showdown !== 'undefined') {
-                const converter = new showdown.Converter({
-                    simplifiedAutoLink: true,
-                    strikethrough: true,
-                    tables: true,
-                    tasklists: true
-                });
-                htmlContent = converter.makeHtml(content);
-            } else {
-                console.error("Showdown library not loaded!");
-                // Fallback: display raw text with basic formatting
-                htmlContent = content.replace(/\n/g, '<br>');
-            }
-        }
-
-        contentArea.innerHTML = htmlContent; // Display the generated HTML or error
-        // No longer need to set display: block here, container is always visible
-    } else {
-        console.error("Summary div or content area not available to display content.");
+    if (!summaryDiv) {
+        console.error("Summary div not available to display content.");
+        return;
     }
+    // Find the placeholder message
+    const placeholder = summaryDiv.querySelector('#summary-placeholder');
+    if (!placeholder) {
+        console.error("Summary placeholder not found. Cannot display summary.");
+        // As a fallback, maybe append?
+        // appendMessage(isError ? `<strong>Error:</strong> ${content}` : content, 'assistant');
+        return;
+    }
+
+    let htmlContent = '';
+    if (isError) {
+        htmlContent = `<strong>Error:</strong> ${content}`;
+    } else {
+        // Use Showdown to convert Markdown summary to HTML
+        if (typeof showdown !== 'undefined') {
+            const converter = new showdown.Converter({
+                simplifiedAutoLink: true,
+                strikethrough: true,
+                tables: true,
+                tasklists: true
+            });
+            htmlContent = converter.makeHtml(content);
+        } else {
+            console.error("Showdown library not loaded!");
+            htmlContent = content.replace(/\n/g, '<br>'); // Fallback
+        }
+    }
+
+    // Update the placeholder content and remove the ID
+    placeholder.innerHTML = htmlContent;
+    placeholder.id = ''; // Remove ID so it's not targeted again
+
+    // Ensure scroll is at bottom after content update
+    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
+     if (summaryBody) {
+        summaryBody.scrollTop = summaryBody.scrollHeight;
+     }
+}
+
+// Handle submission of a question from the input footer
+function handleQuestionSubmit() {
+    if (!summaryDiv) return;
+    const qaInput = summaryDiv.querySelector('#qa-input-ext');
+    const questionText = qaInput.value.trim();
+
+    if (questionText) {
+        console.log("Submitting question:", questionText);
+        // Clear input
+        qaInput.value = '';
+        // Append user message
+        // Basic escaping for display - consider a more robust sanitizer if needed
+        const escapedQuestion = questionText.replace(/</g, "<").replace(/>/g, ">");
+        appendMessage(escapedQuestion, 'user');
+        // Append thinking placeholder
+        appendMessage("<i>Thinking...</i>", 'assistant', 'thinking-placeholder');
+
+        // Send to background
+        const videoUrl = window.location.href;
+        chrome.runtime.sendMessage({ action: "askQuestion", question: questionText, url: videoUrl }, (response) => {
+             if (chrome.runtime.lastError) {
+                console.error("Error sending question message:", chrome.runtime.lastError.message);
+                displayAnswer("Error communicating with background script: " + chrome.runtime.lastError.message, true);
+                return;
+            }
+            // Response handling is done via the 'answerResponse' listener now
+            if (response && response.status) {
+                 console.log("Background acknowledged question:", response.status);
+            }
+        });
+    }
+}
+
+// Function to display the answer received from the background script
+function displayAnswer(content, isError = false) {
+     if (!summaryDiv) {
+        console.error("Summary div not available to display answer.");
+        return;
+    }
+    // Find the placeholder message
+    const placeholder = summaryDiv.querySelector('#thinking-placeholder');
+    if (!placeholder) {
+        console.error("Thinking placeholder not found. Cannot display answer.");
+        // Fallback: append directly
+        appendMessage(isError ? `<strong>Error:</strong> ${content}` : content, 'assistant');
+        return;
+    }
+
+    let htmlContent = '';
+    if (isError) {
+        htmlContent = `<strong>Error:</strong> ${content}`;
+    } else {
+         // Use Showdown for answers as well, assuming they might contain Markdown
+         if (typeof showdown !== 'undefined') {
+            const converter = new showdown.Converter({
+                simplifiedAutoLink: true,
+                strikethrough: true,
+                tables: true,
+                tasklists: true
+            });
+            htmlContent = converter.makeHtml(content);
+        } else {
+            console.error("Showdown library not loaded!");
+            htmlContent = content.replace(/\n/g, '<br>'); // Fallback
+        }
+    }
+
+    // Update the placeholder content and remove the ID
+    placeholder.innerHTML = htmlContent;
+    placeholder.id = ''; // Remove ID
+
+    // Ensure scroll is at bottom
+    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
+     if (summaryBody) {
+        summaryBody.scrollTop = summaryBody.scrollHeight;
+     }
 }
 
 
@@ -216,18 +347,23 @@ const initialCheckInterval = setInterval(() => {
 }, 500); // Check every 500ms
 
 
-// Listen for messages from background or popup
+// Listen for messages from background script or options page
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "updateTheme") {
         console.log("Theme update message received:", request.theme);
         applyTheme(request.theme);
-        sendResponse({ status: "Theme updated" }); // Acknowledge receipt
-    } else if (request.action === "displayUpdate") { // Example action from original code
-        console.log("Received message from background:", request.message);
-        // Update UI if needed
-        // sendResponse({ status: "Received update" });
+        sendResponse({ status: "Theme updated" });
+        return false; // Synchronous response
+    } else if (request.action === "answerResponse") {
+        console.log("Answer response received from background:", request);
+        if (request.answer) {
+            displayAnswer(request.answer, false);
+        } else if (request.error) {
+            displayAnswer(request.error, true);
+        }
+        // No response needed back to background for this
+        return false; // Synchronous handling
     }
-    // Return true if you might send a response asynchronously.
-    // For theme update, response is synchronous, but returning true is safer practice.
-    return true;
+    // Return true only if we expect to sendResponse asynchronously (e.g., for getSummary)
+    // For other messages handled synchronously or not needing a response, return false or nothing.
 });

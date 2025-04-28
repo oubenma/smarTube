@@ -130,7 +130,8 @@
 }
 
 /* Collapsed state */
-#youtube-summary-container-ext.collapsed #summary-body-ext {
+#youtube-summary-container-ext.collapsed #summary-body-ext,
+#youtube-summary-container-ext.collapsed #summary-footer-ext {
     display: none;
 }
 

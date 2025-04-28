@@ -7,7 +7,7 @@ This project is a Chrome browser extension designed to summarize YouTube videos 
 The extension injects a summary container (`#youtube-summary-container-ext`) into the YouTube video watch page's secondary column (`youtube.com/watch*`). This container is always visible upon injection and provides both video summarization and a Q&A interface based on the transcript.
 
 1.  The container displays a sticky header with the title "Video Summary" and a settings (⚙️) button.
-2.  Clicking the header area (but not the settings button) toggles the visibility of the container's body (collapsing/expanding it).
+2.  Clicking the header area (but not the settings button) toggles the visibility of the container's body and footer (collapsing/expanding the content area below the header).
 3.  Clicking the settings (⚙️) button opens the extension's options page.
 4.  The container body initially contains a "✨ Show Summary" button. Clicking this button triggers the summary generation:
     *   The button is replaced with a loading message in the body.
@@ -104,7 +104,7 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
 
 ## Potential Improvements (from `ideas.md`)
 
-*   Better UI/UX for container controls (Implemented: Sticky header with settings button and header click for collapse).
+*   Better UI/UX for container controls (Implemented: Sticky header with settings button and header click to collapse/expand body and footer).
 *   Enhanced theme support (Implemented: Auto/Light/Dark options added, with "Auto" matching YouTube's theme).
 *   Proper Markdown rendering for summaries and Q&A answers (Implemented: Using Showdown.js).
 *   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).

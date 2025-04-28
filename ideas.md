@@ -4,3 +4,4 @@
 - add an option of add customazed prompts for summurizing videos
 - add time stamp for each idea
 - fix the problem when navigation between multiple videos
+- multiple help buttons should appear, detailed summary, brief summary, key points ...

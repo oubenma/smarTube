@@ -51,9 +51,44 @@ function restoreOptions() {
         
         // Set theme radio button
         document.getElementById(`theme${items.theme.charAt(0).toUpperCase() + items.theme.slice(1)}`).checked = true;
+        
+        // Apply the theme
+        applyTheme(items.theme);
+    });
+}
+
+// Function to apply theme to the options page
+function applyTheme(theme) {
+    if (theme === 'auto') {
+        // Check system dark mode preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    } else {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+}
+
+// Watch for system theme changes when in auto mode
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        chrome.storage.sync.get('theme', (items) => {
+            if (items.theme === 'auto') {
+                applyTheme('auto');
+            }
+        });
     });
 }
 
 // Add event listeners once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', restoreOptions);
 document.getElementById('saveButton').addEventListener('click', saveOptions);
+
+// Add theme change listener
+document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        applyTheme(e.target.value);
+    });
+});

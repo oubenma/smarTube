@@ -34,7 +34,14 @@ The extension injects a summary container (`#youtube-summary-container-ext`) int
     *   All event listeners and state are reset for the new video context
     *   The MutationObserver also monitors URL changes to handle YouTube's dynamic navigation reliably
 
-The extension includes theme selection (Auto/Light/Dark) and container behavior settings. The "Auto" theme setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. Users can also choose to have the container start in a collapsed state. These settings are managed via a dedicated options page and saved using `chrome.storage.sync`. Clicking the extension icon now directly opens the options page.
+The extension includes theme selection (Auto/Light/Dark) and container behavior settings. The "Auto" theme setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. Users can also choose to have the container start in a collapsed state. These settings are managed via a dedicated options page and saved using `chrome.storage.sync`. The options page features full dark mode support that:
+- Automatically syncs with system preferences when in "Auto" mode
+- Provides a consistent dark theme across all UI elements
+- Uses CSS variables for theming with smooth transitions
+- Maintains proper contrast and readability in both light and dark modes
+- Includes dark-themed form controls and dropdowns
+
+Clicking the extension icon now directly opens the options page.
 
 ## File Structure & Purpose
 
@@ -101,9 +108,15 @@ The extension includes theme selection (Auto/Light/Dark) and container behavior 
         * Language preference
         * Theme setting
         * Initial container collapse state
-    *   Sends a message (`updateTheme`) with the selected theme to the active tab's `content.js` to apply the theme change immediately.
+    *   Manages theme switching with system preference detection
+    *   Handles automatic theme updates based on system changes
+    *   Sends theme update messages to active tabs
 *   **`options.css`**:
-    *   Provides basic styling for the `options.html` page.
+    *   Provides styling for the `options.html` page.
+    *   Implements a comprehensive theming system using CSS variables
+    *   Supports both light and dark modes with smooth transitions
+    *   Ensures proper styling of form elements in both themes
+    *   Maintains accessibility and readability across themes
 *   **`libs/`**: Contains third-party libraries bundled with the extension.
     *   **`showdown.min.js`**: The Showdown.js library used for converting Markdown to HTML in `content.js`. **Note:** The actual library code needs to be manually added to this file.
 *   **`icons/`**:

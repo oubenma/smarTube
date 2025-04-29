@@ -4,13 +4,15 @@ function saveOptions() {
     const supadataKey = document.getElementById('supadataApiKey').value;
     const language = document.getElementById('summaryLanguage').value;
     const theme = document.querySelector('input[name="theme"]:checked').value;
+    const initialCollapsed = document.getElementById('initialCollapsed').checked;
     const status = document.getElementById('statusMessage');
 
     chrome.storage.sync.set({
         geminiApiKey: geminiKey,
         supadataApiKey: supadataKey,
         summaryLanguage: language,
-        theme: theme
+        theme: theme,
+        initialCollapsed: initialCollapsed
     }, () => {
         // Update status to let user know options were saved.
         status.textContent = 'Options saved.';
@@ -39,11 +41,13 @@ function restoreOptions() {
         geminiApiKey: '',
         supadataApiKey: '',
         summaryLanguage: 'auto',
-        theme: 'auto'
+        theme: 'auto',
+        initialCollapsed: false
     }, (items) => {
         document.getElementById('geminiApiKey').value = items.geminiApiKey;
         document.getElementById('supadataApiKey').value = items.supadataApiKey;
         document.getElementById('summaryLanguage').value = items.summaryLanguage;
+        document.getElementById('initialCollapsed').checked = items.initialCollapsed;
         
         // Set theme radio button
         document.getElementById(`theme${items.theme.charAt(0).toUpperCase() + items.theme.slice(1)}`).checked = true;

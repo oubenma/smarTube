@@ -33,9 +33,12 @@ function injectSummaryDivContainer() {
             // Insert the summary div at the top of the secondary column
             secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
 
-            // Apply the theme based on storage AFTER the div is in the DOM
-            chrome.storage.sync.get(['theme'], (result) => {
+            // Apply the theme and check initial collapse state
+            chrome.storage.sync.get(['theme', 'initialCollapsed'], (result) => {
                 applyTheme(result.theme || 'auto'); // Default to 'auto' theme
+                if (result.initialCollapsed) {
+                    summaryDiv.classList.add('collapsed');
+                }
             });
             console.log("Summary div container injected.");
 

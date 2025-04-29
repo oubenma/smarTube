@@ -34,7 +34,7 @@ The extension injects a summary container (`#youtube-summary-container-ext`) int
     *   All event listeners and state are reset for the new video context
     *   The MutationObserver also monitors URL changes to handle YouTube's dynamic navigation reliably
 
-The extension includes theme selection (Auto/Light/Dark). The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the summary container. API keys and theme settings are managed via a dedicated options page. Clicking the extension icon now directly opens the options page.
+The extension includes theme selection (Auto/Light/Dark) and container behavior settings. The "Auto" theme setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. Users can also choose to have the container start in a collapsed state. These settings are managed via a dedicated options page and saved using `chrome.storage.sync`. Clicking the extension icon now directly opens the options page.
 
 ## File Structure & Purpose
 
@@ -73,6 +73,10 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
         * Handles both the secondary column appearance and URL changes
     *   Reads the theme preference and applies the corresponding theme class (`.dark-theme`) to the container.
     *   Listens for `updateTheme` messages from `options.js` to dynamically change the theme.
+    *   Respects user preferences for initial container state:
+        * Checks `chrome.storage.sync` for `initialCollapsed` setting
+        * If enabled, adds the `collapsed` class during container injection
+        * Maintains collapse state across page navigation
     *   Uses multiple mechanisms to detect video changes:
         * History API listeners (`pushState` and `popstate` events)
         * Video ID tracking to prevent unnecessary reinitializations
@@ -83,12 +87,20 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
     *   Defines base styles (light theme) and overrides for the dark theme using a `.dark-theme` class selector.
 *   **`options.html`**:
     *   The HTML structure for the extension's options page.
-    *   Provides input fields for Gemini and Supadata API keys, links to get the keys, a language selection dropdown, and theme selection radio buttons.
+    *   Provides input fields for:
+        * Gemini and Supadata API keys with links to obtain them
+        * Language selection dropdown for summaries
+        * Theme selection radio buttons (Auto/Light/Dark)
+        * Container settings with an option to start collapsed
     *   Links to `options.css` and `options.js`.
 *   **`options.js`**:
     *   Handles the logic for the options page.
     *   Loads saved keys and theme setting from `chrome.storage.sync` on page load.
-    *   Saves entered keys, language preference, and theme setting to `chrome.storage.sync` when the save button is clicked.
+    *   Saves user preferences to `chrome.storage.sync`, including:
+        * API keys
+        * Language preference
+        * Theme setting
+        * Initial container collapse state
     *   Sends a message (`updateTheme`) with the selected theme to the active tab's `content.js` to apply the theme change immediately.
 *   **`options.css`**:
     *   Provides basic styling for the `options.html` page.

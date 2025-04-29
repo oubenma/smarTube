@@ -26,6 +26,13 @@ The extension injects a summary container (`#youtube-summary-container-ext`) int
     *   `background.js` fetches the transcript (if not already available/cached) and calls the Gemini API with a prompt to answer the question based *only* on the transcript.
     *   `background.js` sends the answer (or an error) back to `content.js`.
     *   `content.js` updates the "Thinking..." placeholder with the received answer (or error), maintaining the chat format.
+7.  When navigating between videos (URL changes):
+    *   The extension detects URL changes using History API listeners (`pushState` and `popstate` events)
+    *   Extracts and tracks the video ID from the URL to detect actual video changes
+    *   The existing summary container is properly cleared and removed using direct DOM manipulation
+    *   A fresh container is injected for the new video after a small delay to ensure YouTube's DOM is ready
+    *   All event listeners and state are reset for the new video context
+    *   The MutationObserver also monitors URL changes to handle YouTube's dynamic navigation reliably
 
 The extension includes theme selection (Auto/Light/Dark). The "Auto" setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. The chosen theme ('auto', 'light', or 'dark') is saved and applied to the summary container. API keys and theme settings are managed via a dedicated options page. Clicking the extension icon now directly opens the options page.
 
@@ -60,9 +67,17 @@ The extension includes theme selection (Auto/Light/Dark). The "Auto" setting mat
     *   Receives the summary (via `getSummary` response) or Q&A answer/error (via `answerResponse` message) from `background.js`.
     *   Uses the `appendMessage` function to add chat-like messages (user questions, assistant responses/errors, loading states) to the body.
     *   Uses Showdown.js to convert Markdown responses to HTML.
-    *   Uses a `MutationObserver` to handle YouTube's dynamic loading, ensuring the container is injected when the secondary column appears.
+    *   Uses a `MutationObserver` to handle YouTube's dynamic loading and navigation:
+        * Tracks video IDs to detect actual video changes
+        * Ensures proper cleanup and reinjection of the container when navigating between videos
+        * Handles both the secondary column appearance and URL changes
     *   Reads the theme preference and applies the corresponding theme class (`.dark-theme`) to the container.
     *   Listens for `updateTheme` messages from `options.js` to dynamically change the theme.
+    *   Uses multiple mechanisms to detect video changes:
+        * History API listeners (`pushState` and `popstate` events)
+        * Video ID tracking to prevent unnecessary reinitializations
+        * MutationObserver for YouTube's dynamic navigation
+        * Proper timing and cleanup to ensure smooth transitions between videos
 *   **`styles.css`**:
     *   Contains all the styling for the injected elements (summary container, header, body, footer, buttons, textarea, chat messages, scrollbars).
     *   Defines base styles (light theme) and overrides for the dark theme using a `.dark-theme` class selector.

@@ -1,6 +1,8 @@
 console.log("SmarTube content script loaded.");
 
 let summaryDiv = null; // Keep track of the summary div
+let currentVideoUrl = '';
+let currentVideoId = '';
 
 // Function to create the container for the summary display
 function injectSummaryDivContainer() {
@@ -85,6 +87,38 @@ function injectSummaryDivContainer() {
     }
 }
 
+// Function to extract video ID from URL
+function getVideoIdFromUrl(url) {
+    const urlParams = new URLSearchParams(new URL(url).search);
+    return urlParams.get('v');
+}
+
+// Function to clear the existing summary container
+function clearSummaryContainer() {
+    const existingContainer = document.getElementById('youtube-summary-container-ext');
+    if (existingContainer) {
+        existingContainer.remove();
+    }
+    summaryDiv = null;
+}
+
+// Function to check if URL has changed and reinitialize if needed
+function handleUrlChange() {
+    const newUrl = window.location.href;
+    const newVideoId = getVideoIdFromUrl(newUrl);
+    
+    // Only proceed if we're on a watch page and the video ID has changed
+    if (newUrl.includes('youtube.com/watch') && newVideoId && newVideoId !== currentVideoId) {
+        currentVideoUrl = newUrl;
+        currentVideoId = newVideoId;
+        clearSummaryContainer();
+        // Small delay to ensure YouTube's DOM has updated
+        setTimeout(() => {
+            injectSummaryDivContainer();
+        }, 100);
+    }
+}
+
 // Function to append a message to the summary body (chat style)
 function appendMessage(htmlContent, role, id = null) {
     if (!summaryDiv) return;
@@ -103,7 +137,6 @@ function appendMessage(htmlContent, role, id = null) {
     // Scroll to bottom
     summaryBody.scrollTop = summaryBody.scrollHeight;
 }
-
 
 // Handle the "Show Summary" button click - Modified for chat flow
 function handleShowSummaryClick() {
@@ -158,7 +191,6 @@ function handleShowSummaryClick() {
         }
     });
 }
-
 
 // Function to apply the theme class based on the setting ('auto', 'light', 'dark')
 function applyTheme(themeSetting) {
@@ -307,21 +339,27 @@ function displayAnswer(content, isError = false) {
      }
 }
 
-
 // --- Initialization and Handling YouTube's Dynamic Loading ---
 
 // YouTube uses dynamic navigation (SPA). We need to watch for the appearance
-// of the secondary column to inject our container.
-
+// of the secondary column and URL changes
 const observer = new MutationObserver(mutations => {
-    // Check if the secondary column exists and our container isn't already there
-    if (document.getElementById('secondary') && !document.getElementById('youtube-summary-container-ext')) {
-        injectSummaryDivContainer();
+    // Check if we're on a watch page
+    if (window.location.href.includes('youtube.com/watch')) {
+        // Handle URL changes
+        handleUrlChange();
+        
+        // Check if the secondary column exists and our container isn't already there
+        const secondaryColumn = document.getElementById('secondary');
+        const existingContainer = document.getElementById('youtube-summary-container-ext');
+        
+        if (secondaryColumn && !existingContainer) {
+            injectSummaryDivContainer();
+        }
     }
-    // Optional: More robust check if needed, e.g., observing specific elements added/removed
 });
 
-// Start observing the document body for changes that might add the secondary column
+// Start observing the document body for changes
 observer.observe(document.body, {
     childList: true,
     subtree: true,
@@ -329,16 +367,28 @@ observer.observe(document.body, {
     characterData: false
 });
 
-// Initial injection attempt when the script first loads
-// Use an interval to wait for the secondary column to appear
-const initialCheckInterval = setInterval(() => {
-    const secondaryColumn = document.getElementById('secondary');
-    if (secondaryColumn) {
-        clearInterval(initialCheckInterval); // Stop checking
-        injectSummaryDivContainer(); // Inject the container if the column is found
-    }
-}, 500); // Check every 500ms
+// Watch for URL changes using the History API
+const pushState = history.pushState;
+history.pushState = function() {
+    pushState.apply(history, arguments);
+    handleUrlChange();
+};
 
+window.addEventListener('popstate', handleUrlChange);
+
+// Initial setup when the script first loads
+if (window.location.href.includes('youtube.com/watch')) {
+    currentVideoUrl = window.location.href;
+    currentVideoId = getVideoIdFromUrl(currentVideoUrl);
+    
+    const initialCheckInterval = setInterval(() => {
+        const secondaryColumn = document.getElementById('secondary');
+        if (secondaryColumn) {
+            clearInterval(initialCheckInterval);
+            injectSummaryDivContainer();
+        }
+    }, 500);
+}
 
 // Listen for messages from background script or options page
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

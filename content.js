@@ -34,11 +34,14 @@ function injectSummaryDivContainer() {
             secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
 
             // Apply the theme and check initial collapse state
-            chrome.storage.sync.get(['theme', 'initialCollapsed'], (result) => {
+            chrome.storage.sync.get(['theme', 'initialCollapsed', 'fontSize'], (result) => {
                 applyTheme(result.theme || 'auto'); // Default to 'auto' theme
                 if (result.initialCollapsed) {
                     summaryDiv.classList.add('collapsed');
                 }
+                // Apply saved font size or default to 14
+                const fontSize = result.fontSize || 14;
+                document.documentElement.style.setProperty('--summary-font-size', `${fontSize}px`);
             });
             console.log("Summary div container injected.");
 

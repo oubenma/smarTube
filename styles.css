@@ -8,7 +8,7 @@
     border-radius: 12px;
     /* max-height removed, handled by body */
     /* overflow-y removed, handled by body */
-    font-size: 14px;
+    font-size: var(--summary-font-size, 14px);
     line-height: 1.6;
     color: #333; /* Default text color */
     position: relative; /* Keep for potential absolute positioning needs if any arise */
@@ -62,6 +62,25 @@
      /* Emoji size is usually fine, adjust font-size if needed */
 }
 
+/* Font size control buttons */
+#decrease-font-btn,
+#increase-font-btn {
+    font-size: 20px !important;
+    font-weight: bold !important;
+    width: 24px;
+    height: 24px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px !important;
+    background-color: transparent !important;
+    transition: background-color 0.2s !important;
+}
+
+#decrease-font-btn:hover,
+#increase-font-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
 
 #summary-body-ext {
     padding: 15px;
@@ -296,4 +315,10 @@
 #youtube-summary-container-ext.dark-theme .assistant-message#thinking-placeholder i,
 #youtube-summary-container-ext.dark-theme .assistant-message#summary-placeholder i {
      color: #bbb; /* Lighter italic text */
+}
+
+/* Dark theme overrides for font buttons */
+#youtube-summary-container-ext.dark-theme #decrease-font-btn:hover,
+#youtube-summary-container-ext.dark-theme #increase-font-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }

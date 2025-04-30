@@ -136,3 +136,58 @@ input[type="checkbox"] {
     background-color: var(--input-bg);
     color: var(--text-color);
 }
+
+/* Font size controls */
+.font-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.font-size-controls button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--button-bg);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.font-size-controls button:hover {
+    background-color: var(--button-hover);
+}
+
+#current-font-size {
+    font-weight: bold;
+    color: var(--text-color);
+    min-width: 50px;
+    text-align: center;
+}
+
+.font-size-preview {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+    background-color: var(--input-bg);
+}
+
+.font-size-preview p {
+    margin: 0 0 10px;
+    color: var(--text-color);
+    font-size: var(--preview-font-size, 14px);
+    line-height: 1.6;
+}
+
+.font-size-preview p:last-child {
+    margin-bottom: 0;
+}

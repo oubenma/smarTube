@@ -150,3 +150,5 @@ Clicking the extension icon now directly opens the options page.
 *   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).
 *   Initial state shows container with summary button (Implemented).
 *   Added Q&A feature with fixed footer, input, send button, and chat-like display (Implemented).
+*   Font size customization for answers in the container (Implemented).
+*   Improved Arabic language text alignment and display (Implemented).

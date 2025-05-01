@@ -227,6 +227,34 @@
      color: #666;
 }
 
+/* --- RTL Support for Arabic Content --- */
+
+#summary-body-ext[dir="rtl"] {
+    text-align: right;
+}
+
+.message[dir="rtl"] {
+    text-align: right;
+}
+
+.user-message[dir="rtl"] {
+    margin-left: 0;
+    margin-right: auto;
+    border-bottom-right-radius: 18px;
+    border-bottom-left-radius: 5px;
+}
+
+.assistant-message[dir="rtl"] {
+    margin-right: 0;
+    margin-left: auto;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 5px;
+}
+
+#qa-input-ext[dir="rtl"] {
+    text-align: right;
+}
+
 /* --- Dark Theme Overrides --- */
 
 #youtube-summary-container-ext.dark-theme {

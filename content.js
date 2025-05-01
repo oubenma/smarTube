@@ -125,6 +125,12 @@ function handleUrlChange() {
     }
 }
 
+// Function to detect if text contains Arabic
+function containsArabic(text) {
+    const arabicPattern = /[\u0600-\u06FF]/;
+    return arabicPattern.test(text);
+}
+
 // Function to append a message to the summary body (chat style)
 function appendMessage(htmlContent, role, id = null) {
     if (!summaryDiv) return;
@@ -132,10 +138,15 @@ function appendMessage(htmlContent, role, id = null) {
     if (!summaryBody) return;
 
     const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message', `${role}-message`);
+    messageDiv.className = `message ${role}-message`;
     messageDiv.innerHTML = htmlContent; // Use innerHTML to allow basic formatting
     if (id) {
         messageDiv.id = id;
+    }
+
+    // Check if content contains Arabic and set RTL if needed
+    if (containsArabic(messageDiv.textContent)) {
+        messageDiv.setAttribute('dir', 'rtl');
     }
 
     summaryBody.appendChild(messageDiv);
@@ -256,6 +267,13 @@ function displaySummary(content, isError = false) {
         }
     }
 
+    // Check if content contains Arabic and set RTL if needed
+    if (containsArabic(content)) {
+        summaryDiv.querySelector('#summary-body-ext').setAttribute('dir', 'rtl');
+    } else {
+        summaryDiv.querySelector('#summary-body-ext').setAttribute('dir', 'ltr');
+    }
+
     // Update the placeholder content and remove the ID
     placeholder.innerHTML = htmlContent;
     placeholder.id = ''; // Remove ID so it's not targeted again
@@ -275,6 +293,12 @@ function handleQuestionSubmit() {
 
     if (questionText) {
         console.log("Submitting question:", questionText);
+        // Set RTL for input if Arabic is detected
+        if (containsArabic(questionText)) {
+            qaInput.setAttribute('dir', 'rtl');
+        } else {
+            qaInput.setAttribute('dir', 'ltr');
+        }
         // Clear input
         qaInput.value = '';
         // Append user message

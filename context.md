@@ -131,6 +131,18 @@ Clicking the extension icon now directly opens the options page.
 *   **`yt-sumrizer.bat`**:
     *   A simple Windows batch script to open the project directory in VS Code (`code .`).
 
+## API Keys and Licensing
+
+*   **API Keys:**
+    *   Gemini API: Available for free from Google AI Studio (makersuite.google.com/app/apikey) with a generous free tier of 60 requests/minute
+    *   Supadata API: Free API key available through registration at supadata.ai
+
+*   **License:**
+    *   The project uses MIT License with Commons Clause
+    *   Free for non-commercial use
+    *   Commercial use requires explicit written permission
+    *   Includes restrictions on using the software for commercial advantage, product integration, or business analysis
+
 ## Key Technologies & Concepts
 
 *   **Chrome Extension APIs:** Manifest V3, Service Workers (`background.js`), Content Scripts (`content.js`), Options UI (`options_ui`), `chrome.runtime.sendMessage`, `chrome.runtime.onMessage`, `chrome.storage.sync` (used for theme and API keys), `chrome.tabs.query`, `chrome.tabs.sendMessage`, DOM manipulation.

@@ -1,2 +1,2 @@
 GET https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&text=true HTTP/1.1
-x-api-key: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6IjEifQ.eyJpc3MiOiJuYWRsZXMiLCJpYXQiOiIxNzQ1MzY1MTkyIiwicHVycG9zZSI6ImFwaV9hdXRoZW50aWNhdGlvbiIsInN1YiI6ImMzYTY2NGRkOTMyNzQwOTJiZGE5MWJkODRlZjk2MWJmIn0.dyEsUYsh33NBxxg-bMpDXzhWD8umI8KRhGUru2Pmb_4
+x-api-key: [YOUR API KEY]

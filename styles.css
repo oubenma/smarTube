@@ -5,6 +5,7 @@
     border: 1px solid #ddd;
     /* padding removed, handled by header/body */
     margin-top: 15px;
+    margin-bottom: 15px;
     border-radius: 12px;
     /* max-height removed, handled by body */
     /* overflow-y removed, handled by body */

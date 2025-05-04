@@ -5,3 +5,5 @@
 - add time stamp for each idea
 - fix the problem when navigation between multiple videos
 - multiple help buttons should appear, detailed summary, brief summary, key points ...
+- add summary with timestamps
+- add new logic of predifined buttons

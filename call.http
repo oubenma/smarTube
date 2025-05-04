@@ -1,2 +1,0 @@
-GET https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&text=true HTTP/1.1
-x-api-key: [YOUR API KEY]

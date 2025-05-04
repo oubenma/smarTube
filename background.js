@@ -227,7 +227,7 @@ Your output should use the following format:
 
     try {
         // Limit transcript size if necessary
-        const MAX_INPUT_LENGTH = 30000; // Example limit
+        const MAX_INPUT_LENGTH = 300000;
         if (transcriptText.length > MAX_INPUT_LENGTH) {
             console.warn(`Transcript length (${transcriptText.length}) exceeds limit (${MAX_INPUT_LENGTH}). Truncating.`);
             transcriptText = transcriptText.substring(0, MAX_INPUT_LENGTH);
@@ -311,7 +311,7 @@ async function callGeminiForQuestion(transcriptText, question, geminiApiKey) {
     const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
 
     // Limit transcript size if necessary (apply same limit as summarization)
-    const MAX_INPUT_LENGTH = 30000;
+    const MAX_INPUT_LENGTH = 300000;
     if (transcriptText.length > MAX_INPUT_LENGTH) {
         console.warn(`Transcript length (${transcriptText.length}) exceeds limit (${MAX_INPUT_LENGTH}) for Q&A. Truncating.`);
         transcriptText = transcriptText.substring(0, MAX_INPUT_LENGTH);

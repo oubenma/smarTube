@@ -58,9 +58,22 @@
     </div>
 
     <div class="option-item">
-        <label for="supadataApiKey">Supadata API Key:</label>
-        <input type="password" id="supadataApiKey" name="supadataApiKey" size="50">
-        <a href="https://supadata.ai/" target="_blank" class="help-link">Get Supadata Key</a>
+        <fieldset>
+            <legend>Supadata API Keys</legend>
+            <div class="option-item">
+                <label for="newSupadataKeyName">Key Name (Optional):</label>
+                <input type="text" id="newSupadataKeyName" name="newSupadataKeyName" size="30" placeholder="e.g., Personal Key">
+            </div>
+            <div class="option-item">
+                <label for="newSupadataKey">API Key Value:</label>
+                <input type="password" id="newSupadataKey" name="newSupadataKey" size="50" placeholder="Enter Supadata API Key">
+                <button id="addSupadataKeyBtn" style="margin-left: 10px;">Add Key</button>
+                <a href="https://supadata.ai/" target="_blank" class="help-link" style="display: block; margin-top: 5px;">Get Supadata Key</a>
+            </div>
+            <div id="supadataKeysList" style="margin-top: 15px;">
+                <!-- Keys will be listed here by options.js -->
+            </div>
+        </fieldset>
     </div>
 
     <div class="option-item">

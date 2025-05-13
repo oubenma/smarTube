@@ -18,29 +18,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getSummary") {
         console.log("Background script received getSummary request for URL:", request.url);
 
-        // 1. Get API Keys and Language Preference from storage
-        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey', 'summaryLanguage'], (items) => {
+        // 1. Get Gemini API Key and Language Preference from storage
+        chrome.storage.sync.get(['geminiApiKey', 'summaryLanguage'], (items) => {
             const geminiApiKey = items.geminiApiKey;
-            const supadataApiKey = items.supadataApiKey;
-            const language = items.summaryLanguage || 'auto'; // Default to 'auto' if not set
+            const language = items.summaryLanguage || 'auto';
 
-            // 2. Validate Keys
-            if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
-                console.error("API Keys missing or invalid in storage.");
-                sendResponse({ error: API_KEYS_MISSING_ERROR }); // Send specific error code
-                return; // Stop processing within this callback
+            if (!geminiApiKey || geminiApiKey.trim() === '') {
+                console.error("Gemini API Key missing or invalid in storage.");
+                sendResponse({ error: API_KEYS_MISSING_ERROR });
+                return;
             }
+            console.log("Gemini API Key retrieved successfully.");
 
-            console.log("API Keys retrieved successfully.");
-
-            // 3. Chain the API calls: Get transcript first, then summarize
-            getTranscript(request.url, supadataApiKey) // Pass key
+            // 2. Get transcript using the new recursive function, then summarize
+            tryGetTranscriptRecursive(request.url)
                 .then(transcript => {
                     if (!transcript || transcript.trim().length === 0) {
                         throw new Error("Received empty or invalid transcript from Supadata.");
                     }
                     console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API with language:", language);
-                    return callGeminiAPI(transcript, geminiApiKey, language); // Pass transcript, key, and language
+                    return callGeminiAPI(transcript, geminiApiKey, language);
                 })
                 .then(summary => {
                     console.log("Sending summary back to content script.");
@@ -49,9 +46,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 .catch(error => {
                     console.error("Error during summarization process:", error);
                     let errorMessage = "Failed to generate summary.";
-                    // Check for specific error types if needed (e.g., distinguish Supadata vs Gemini errors)
-                    if (error.message.includes("API key") || error.message.includes("API request failed")) {
-                         errorMessage = error.message; // Use the specific error from the API call
+                    if (error.message === API_KEYS_MISSING_ERROR || error.message.includes("All Supadata API keys")) {
+                        errorMessage = error.message; // Use specific error
+                    } else if (error.message.includes("API key") || error.message.includes("API request failed")) {
+                         errorMessage = error.message;
                     } else if (error.message.includes("Supadata")) {
                         errorMessage = `Failed to fetch transcript: ${error.message}`;
                     } else if (error.message.includes("Gemini")) {
@@ -62,48 +60,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     sendResponse({ error: errorMessage });
                 });
         });
-
-        // Return true because we will send the response asynchronously
-        return true;
+        return true; // Asynchronous response
 
     } else if (request.action === "openOptionsPage") {
         console.log("Background script received openOptionsPage request.");
         chrome.runtime.openOptionsPage();
-        // No asynchronous response needed, so we don't return true here.
     } else if (request.action === "askQuestion") {
         console.log("Background script received askQuestion request:", request.question, "for URL:", request.url);
 
-        // 1. Get API Keys
-        chrome.storage.sync.get(['geminiApiKey', 'supadataApiKey'], (items) => {
+        chrome.storage.sync.get(['geminiApiKey'], (items) => {
             const geminiApiKey = items.geminiApiKey;
-            const supadataApiKey = items.supadataApiKey;
 
-            // 2. Validate Keys
-            if (!geminiApiKey || !supadataApiKey || geminiApiKey.trim() === '' || supadataApiKey.trim() === '') {
-                console.error("API Keys missing or invalid for Q&A.");
-                // Send error back to content script using the specific message format
+            if (!geminiApiKey || geminiApiKey.trim() === '') {
+                console.error("Gemini API Key missing or invalid for Q&A.");
                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0]?.id) {
                         chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", error: API_KEYS_MISSING_ERROR });
                     }
                 });
-                return; // Stop processing
+                return;
             }
+            console.log("Gemini API Key retrieved for Q&A.");
 
-            console.log("API Keys retrieved for Q&A.");
-
-            // 3. Get transcript, then ask question
-            getTranscript(request.url, supadataApiKey)
+            tryGetTranscriptRecursive(request.url)
                 .then(transcript => {
                     if (!transcript || transcript.trim().length === 0) {
                         throw new Error("Cannot answer question: Transcript is empty or invalid.");
                     }
                     console.log("Transcript fetched for Q&A. Calling Gemini for question.");
-                    return callGeminiForQuestion(transcript, request.question, geminiApiKey); // Pass transcript, question, key
+                    return callGeminiForQuestion(transcript, request.question, geminiApiKey);
                 })
                 .then(answer => {
                     console.log("Sending answer back to content script.");
-                     // Send answer back using the specific message format
                     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                         if (tabs[0]?.id) {
                             chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", answer: answer });
@@ -113,83 +101,167 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 .catch(error => {
                     console.error("Error during Q&A process:", error);
                     let errorMessage = `Failed to get answer: ${error.message || "Unknown error"}`;
-                     // Send error back using the specific message format
-                     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                     if (error.message === API_KEYS_MISSING_ERROR || error.message.includes("All Supadata API keys")) {
+                        errorMessage = error.message; // Use specific error
+                    }
+                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                         if (tabs[0]?.id) {
                             chrome.tabs.sendMessage(tabs[0].id, { action: "answerResponse", error: errorMessage });
                         }
                     });
                 });
         });
-
-        // Acknowledge receipt (optional, but good practice)
-        sendResponse({ status: "Question received, processing..." });
-        return true; // Indicates that the actual answer/error will be sent later asynchronously via chrome.tabs.sendMessage
+        sendResponse({ status: "Question received, processing..." }); // Acknowledge receipt
+        return true; // Asynchronous response
     }
-
-    // If other synchronous actions were added, they would go here.
-    // If no response is sent synchronously or asynchronously, Chrome might show an error
-    // in the content script's console ("The message port closed before a response was received").
-    // For actions like openOptionsPage where no response is needed, this is usually fine.
 });
 
+// --- Supadata API Key Management and Transcript Fetching ---
 
-// Function to get transcript from Supadata
-async function getTranscript(videoUrl, supadataApiKey) { // Added apiKey parameter
-    console.log("Calling Supadata API for URL:", videoUrl);
-    const transcriptUrl = `${SUPADATA_API_BASE_URL}?url=${encodeURIComponent(videoUrl)}&text=true`;
+async function tryGetTranscriptRecursive(videoUrl, attemptCycle = 0, triedKeyIds = new Set()) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.sync.get(['supadataApiKeys', 'activeSupadataKeyId'], async (storageItems) => {
+            let { supadataApiKeys, activeSupadataKeyId } = storageItems;
 
-    try {
-        const response = await fetch(transcriptUrl, {
-            method: 'GET',
-            headers: {
-                'x-api-key': supadataApiKey, // Use passed key
-                'Accept': 'application/json'
+            if (!supadataApiKeys || supadataApiKeys.length === 0) {
+                console.error("No Supadata API keys configured.");
+                return reject(new Error(API_KEYS_MISSING_ERROR));
+            }
+
+            let activeKeyObj = null;
+            if (activeSupadataKeyId) {
+                activeKeyObj = supadataApiKeys.find(k => k.id === activeSupadataKeyId);
+            }
+
+            // If no active key ID or the active key object is not found, try to find the first non-rate-limited key
+            if (!activeKeyObj || activeKeyObj.isRateLimited) {
+                const firstAvailableKey = supadataApiKeys.find(k => !k.isRateLimited && !triedKeyIds.has(k.id));
+                if (firstAvailableKey) {
+                    activeKeyObj = firstAvailableKey;
+                    activeSupadataKeyId = firstAvailableKey.id;
+                    // Update storage with the new active key
+                    await chrome.storage.sync.set({ activeSupadataKeyId: activeSupadataKeyId });
+                    console.log(`Switched to available Supadata key: ${activeKeyObj.name || activeKeyObj.id}`);
+                } else {
+                     // If all keys have been tried in this cycle or are marked rate limited
+                    if (triedKeyIds.size >= supadataApiKeys.length || supadataApiKeys.every(k => k.isRateLimited)) {
+                        console.error("All Supadata API keys are currently rate-limited or have been tried unsuccessfully in this cycle.");
+                        return reject(new Error("All Supadata API keys are currently rate-limited. Please try again later or check your keys in options."));
+                    }
+                    // This case should ideally be caught by the loop below if no key is initially active/valid
+                }
+            }
+            
+            if (!activeKeyObj) { // Should not happen if there are keys, but as a safeguard
+                 console.error("Could not determine an active Supadata API key.");
+                 return reject(new Error(API_KEYS_MISSING_ERROR));
+            }
+
+            // Add current key to tried set for this user action cycle
+            triedKeyIds.add(activeKeyObj.id);
+
+            console.log(`Attempting Supadata API call with key: ${activeKeyObj.name || activeKeyObj.id} (Attempt: ${attemptCycle + 1})`);
+            const transcriptUrl = `${SUPADATA_API_BASE_URL}?url=${encodeURIComponent(videoUrl)}&text=true`;
+
+            try {
+                const response = await fetch(transcriptUrl, {
+                    method: 'GET',
+                    headers: { 'x-api-key': activeKeyObj.key, 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    let errorBody = {};
+                    try { errorBody = await response.json(); } catch (e) { /* Ignore */ }
+                    const errorDetail = errorBody?.message || response.statusText;
+                    console.error(`Supadata API Error (${response.status}) with key ${activeKeyObj.id}: ${errorDetail}`);
+
+                    if (response.status === 429 || response.status === 401 || response.status === 403) { // Rate limit or invalid key
+                        // Mark current key as rate-limited
+                        const keyIndex = supadataApiKeys.findIndex(k => k.id === activeKeyObj.id);
+                        if (keyIndex !== -1) {
+                            supadataApiKeys[keyIndex].isRateLimited = true;
+                        }
+                        
+                        // Find next available key that hasn't been tried in this cycle
+                        let nextKeyToTry = null;
+                        let nextKeyId = null;
+                        for (let i = 0; i < supadataApiKeys.length; i++) {
+                            const potentialNextKey = supadataApiKeys[(keyIndex + 1 + i) % supadataApiKeys.length];
+                            if (!potentialNextKey.isRateLimited && !triedKeyIds.has(potentialNextKey.id)) {
+                                nextKeyToTry = potentialNextKey;
+                                break;
+                            }
+                        }
+
+                        await chrome.storage.sync.set({ supadataApiKeys: [...supadataApiKeys], activeSupadataKeyId: nextKeyToTry ? nextKeyToTry.id : activeSupadataKeyId });
+
+
+                        if (nextKeyToTry && attemptCycle < supadataApiKeys.length -1) { // Check attemptCycle against total keys
+                            console.log(`Key ${activeKeyObj.id} failed. Trying next available key: ${nextKeyToTry.id}`);
+                            // Recursive call with incremented attemptCycle and updated triedKeyIds
+                            tryGetTranscriptRecursive(videoUrl, attemptCycle + 1, triedKeyIds)
+                                .then(resolve)
+                                .catch(reject);
+                        } else {
+                            console.error("All Supadata API keys have been tried or are rate-limited in this cycle.");
+                            reject(new Error("All Supadata API keys are currently rate-limited or invalid. Please check your keys in options or try again later."));
+                        }
+                    } else { // Other non-retryable Supadata errors
+                        throw new Error(`Supadata API request failed (${response.status}): ${errorDetail}`);
+                    }
+                    return; // Important: stop processing for this attempt
+                }
+
+                const data = await response.json();
+                if (data && typeof data.content === 'string') {
+                    console.log(`Transcript fetched successfully with key: ${activeKeyObj.id}`);
+                    // If successful, reset its rate-limited status (optimistic)
+                    const keyIndex = supadataApiKeys.findIndex(k => k.id === activeKeyObj.id);
+                    if (keyIndex !== -1 && supadataApiKeys[keyIndex].isRateLimited) {
+                        supadataApiKeys[keyIndex].isRateLimited = false;
+                        await chrome.storage.sync.set({ supadataApiKeys: [...supadataApiKeys] });
+                    }
+                    resolve(data.content);
+                } else {
+                    throw new Error("Could not extract transcript content from Supadata API response.");
+                }
+
+            } catch (error) {
+                console.error('Error during fetch to Supadata API:', error);
+                // If it's a network error or similar, and we haven't exhausted keys, we might still want to try another key.
+                // For simplicity now, any catch here that isn't a handled API error might just reject.
+                // Consider if more sophisticated retry for network errors is needed.
+                // For now, let's assume this error means this key attempt failed, try to cycle if possible.
+                
+                // Mark current key as potentially problematic (similar to rate limit for cycling)
+                const keyIndex = supadataApiKeys.findIndex(k => k.id === activeKeyObj.id);
+                 if (keyIndex !== -1 && !supadataApiKeys[keyIndex].isRateLimited) { // Avoid overwriting if already marked by API error
+                    supadataApiKeys[keyIndex].isRateLimited = true; // Or a different flag like 'genericError'
+                }
+
+                let nextKeyToTry = null;
+                for (let i = 0; i < supadataApiKeys.length; i++) {
+                    const potentialNextKey = supadataApiKeys[(keyIndex + 1 + i) % supadataApiKeys.length];
+                    if (!potentialNextKey.isRateLimited && !triedKeyIds.has(potentialNextKey.id)) {
+                        nextKeyToTry = potentialNextKey;
+                        break;
+                    }
+                }
+                
+                await chrome.storage.sync.set({ supadataApiKeys: [...supadataApiKeys], activeSupadataKeyId: nextKeyToTry ? nextKeyToTry.id : activeSupadataKeyId });
+
+                if (nextKeyToTry && attemptCycle < supadataApiKeys.length -1) {
+                     console.warn(`Fetch error with key ${activeKeyObj.id}. Trying next. Error: ${error.message}`);
+                     tryGetTranscriptRecursive(videoUrl, attemptCycle + 1, triedKeyIds)
+                        .then(resolve)
+                        .catch(reject);
+                } else {
+                    reject(new Error(`Supadata API Error: ${error.message} (after trying available keys)`));
+                }
             }
         });
-
-        if (!response.ok) {
-            let errorBody = {};
-            try {
-                 errorBody = await response.json();
-            } catch (e) { /* Ignore if response is not JSON */ }
-            console.error("Supadata API Error Response:", response.status, response.statusText, errorBody);
-            // Provide more specific error messages based on status code if possible
-            let detail = errorBody?.message || '';
-            if (response.status === 401 || response.status === 403) {
-                detail = "Invalid Supadata API Key.";
-            } else if (response.status === 404) {
-                 detail = "Transcript not found for this video.";
-            } else if (response.status === 429) {
-                 detail = "Supadata API rate limit exceeded.";
-            }
-            throw new Error(`Supadata API request failed (${response.status}): ${detail || response.statusText}`);
-        }
-
-        const data = await response.json();
-        // console.log("Supadata API Raw Response:", data); // Optional: Log raw response for debugging
-
-        if (data && typeof data.content === 'string') { // Check if content exists and is a string
-            console.log("Transcript content length:", data.content.length);
-            if (data.content.trim().length === 0) {
-                console.warn("Supadata returned an empty transcript string.");
-                // Decide if empty transcript is an error or just means no subtitles
-                // For now, let's treat it as potentially valid but log a warning.
-                // throw new Error("Supadata returned an empty transcript.");
-            }
-            return data.content; // Return the transcript text
-        } else {
-            console.error("Unexpected Supadata API response structure or missing content:", data);
-            throw new Error("Could not extract transcript content from Supadata API response.");
-        }
-
-    } catch (error) {
-        console.error('Error during fetch to Supadata API:', error);
-        // Ensure the error message clearly indicates it's from Supadata
-        throw new Error(`Supadata API Error: ${error.message}`);
-    }
+    });
 }
-
 
 // Function to summarize transcript text using Gemini API
 async function callGeminiAPI(transcriptText, geminiApiKey, language) { // Added apiKey and language parameters

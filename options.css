@@ -72,6 +72,7 @@ legend {
     color: var(--text-color);
 }
 
+.option-item input[type="text"],
 .option-item input[type="password"],
 .option-item select {
     padding: 8px;
@@ -83,6 +84,7 @@ legend {
     color: var(--text-color);
 }
 
+.option-item input[type="text"]:focus,
 .option-item input[type="password"]:focus,
 .option-item select:focus {
     outline: none;

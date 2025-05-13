@@ -55,10 +55,10 @@ Clicking the extension icon now directly opens the options page.
 *   **`background.js`**:
     *   Handles the core API interaction logic.
     *   Listens for `getSummary` messages from `content.js`.
-    *   Retrieves Supadata and Gemini API keys, and theme settings from `chrome.storage.sync`.
-    *   If keys are present, calls the Supadata Transcript API (using the Supadata key) and then the Gemini API (using the Gemini key and the transcript).
-    *   Handles API responses, extracts the Markdown summary text from Gemini, and manages potential errors from storage access and both API calls.
-    *   Sends the Markdown summary or an error message (including a specific `API_KEYS_MISSING` error if keys aren't configured) back to `content.js`.
+    *   Retrieves Gemini API key, Supadata API key settings (multiple keys, active key ID), and theme settings from `chrome.storage.sync`.
+    *   If keys are present, calls the Supadata Transcript API (using the active Supadata key, with logic to cycle through keys on rate limit/error) and then the Gemini API (using the Gemini key and the transcript).
+    *   Handles API responses, including cycling Supadata keys if rate-limited, extracts the Markdown summary text from Gemini, and manages potential errors.
+    *   Sends the Markdown summary or an error message (including `API_KEYS_MISSING` or "all keys rate-limited" errors) back to `content.js`.
     *   Listens for `openOptionsPage` messages from `content.js` and opens the extension's options page.
     *   Listens for `askQuestion` messages from `content.js`, fetches the transcript (if needed), calls the Gemini API for a Q&A response, and sends the answer/error back to `content.js` via the `answerResponse` message.
 *   **`content.js`**:
@@ -95,16 +95,24 @@ Clicking the extension icon now directly opens the options page.
 *   **`options.html`**:
     *   The HTML structure for the extension's options page.
     *   Provides input fields for:
-        * Gemini and Supadata API keys with links to obtain them
+        * Gemini API key with a link to obtain it.
+        * Management of multiple Supadata API keys:
+            * Adding new keys with an optional name.
+            * Listing existing keys, showing their name (or masked key) and an indicator if rate-limited.
+            * Activating a specific key via a radio button.
+            * Deleting keys.
         * Language selection dropdown for summaries
         * Theme selection radio buttons (Auto/Light/Dark)
         * Container settings with an option to start collapsed
     *   Links to `options.css` and `options.js`.
 *   **`options.js`**:
     *   Handles the logic for the options page.
-    *   Loads saved keys and theme setting from `chrome.storage.sync` on page load.
+    *   Loads saved settings (Gemini key, Supadata keys array, active Supadata key ID, theme, etc.) from `chrome.storage.sync` on page load.
+    *   Renders the list of Supadata API keys and handles their addition, deletion, and activation.
     *   Saves user preferences to `chrome.storage.sync`, including:
-        * API keys
+        * Gemini API key.
+        * Supadata API keys (stored as an array of objects, each with `id`, `key`, `name`, `isRateLimited`).
+        * Active Supadata key ID.
         * Language preference
         * Theme setting
         * Initial container collapse state
@@ -134,8 +142,8 @@ Clicking the extension icon now directly opens the options page.
 ## API Keys and Licensing
 
 *   **API Keys:**
-    *   Gemini API: Available for free from Google AI Studio (makersuite.google.com/app/apikey) with a generous free tier of 60 requests/minute
-    *   Supadata API: Free API key available through registration at supadata.ai
+    *   Gemini API: Available for free from Google AI Studio (makersuite.google.com/app/apikey) with a generous free tier of 60 requests/minute.
+    *   Supadata API: Users can add multiple free API keys obtained from supadata.ai. The extension manages these keys, using one active key at a time and automatically cycling to the next available key if the current one encounters a rate limit or error. This helps maintain functionality even if one key is temporarily restricted. Users can also manually activate a specific key from the options page.
 
 *   **License:**
     *   The project uses MIT License with Commons Clause
@@ -159,7 +167,7 @@ Clicking the extension icon now directly opens the options page.
 *   Better UI/UX for container controls (Implemented: Sticky header with settings button and header click to collapse/expand body and footer).
 *   Enhanced theme support (Implemented: Auto/Light/Dark options added, with "Auto" matching YouTube's theme).
 *   Proper Markdown rendering for summaries and Q&A answers (Implemented: Using Showdown.js).
-*   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`).
+*   Secure API key handling (Implemented: Via options page and `chrome.storage.sync`. Enhanced for Supadata with multiple key management and cycling).
 *   Initial state shows container with summary button (Implemented).
 *   Added Q&A feature with fixed footer, input, send button, and chat-like display (Implemented).
 *   Font size customization for answers in the container (Implemented).

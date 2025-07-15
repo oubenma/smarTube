@@ -175,7 +175,8 @@ async function tryGetTranscriptRecursive(videoUrl, attemptCycle = 0, triedKeyIds
                     const errorDetail = errorBody?.message || response.statusText;
                     console.error(`Supadata API Error (${response.status}) with key ${activeKeyObj.id}: ${errorDetail}`);
 
-                    if (response.status === 429 || response.status === 401 || response.status === 403) { // Rate limit or invalid key
+                    // Check for rate limit status (429) or explicit rate limit messages in the error detail
+                    if (response.status === 429 || errorDetail.toLowerCase().includes("rate limit") || errorDetail.toLowerCase().includes("quota exceeded")) {
                         // Mark current key as rate-limited
                         const keyIndex = supadataApiKeys.findIndex(k => k.id === activeKeyObj.id);
                         if (keyIndex !== -1) {
@@ -235,8 +236,12 @@ async function tryGetTranscriptRecursive(videoUrl, attemptCycle = 0, triedKeyIds
                 
                 // Mark current key as potentially problematic (similar to rate limit for cycling)
                 const keyIndex = supadataApiKeys.findIndex(k => k.id === activeKeyObj.id);
-                 if (keyIndex !== -1 && !supadataApiKeys[keyIndex].isRateLimited) { // Avoid overwriting if already marked by API error
-                    supadataApiKeys[keyIndex].isRateLimited = true; // Or a different flag like 'genericError'
+                 // For generic fetch errors (e.g., network issues), do NOT mark the key as rate-limited.
+                 // A key should only be marked as rate-limited if the API explicitly returns a rate limit status (429)
+                 // or a rate limit message. The key cycling logic will still attempt to try other keys if the current
+                 // request fails, but without permanently deactivating the current key for non-rate-limit issues.
+                if (keyIndex !== -1 && supadataApiKeys[keyIndex].isRateLimited) {
+                    // If the key was already marked as rate-limited by an explicit API response, keep it that way.
                 }
 
                 let nextKeyToTry = null;

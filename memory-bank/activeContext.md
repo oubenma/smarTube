@@ -21,6 +21,6 @@ The current task is to read the `context.md` file and populate the memory bank. 
 
 ## Active Decisions and Considerations
 - The extension relies heavily on the YouTube DOM structure; future YouTube updates could potentially break the UI injection or navigation detection. The `MutationObserver` is a key mitigation for this.
-- The Supadata API key cycling mechanism is crucial for maintaining service availability given potential rate limits.
+- The Supadata API key cycling mechanism is crucial for maintaining service availability given potential rate limits. It has been refined to only deactivate a Supadata API key if the error message explicitly indicates a rate limit, rather than for all API errors.
 - Security of API keys via `chrome.storage.sync` is a critical design choice.
 - The Python backend in `api/` is currently not used by the extension's core flow, which directly uses the Supadata API. This might be a point for future consideration if alternative transcript sources are needed.

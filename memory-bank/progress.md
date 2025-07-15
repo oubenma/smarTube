@@ -26,7 +26,7 @@ Based on the "Potential Improvements" section in `context.md` and the "Core Func
 - **Container Behavior Setting:** Option to start the container in a collapsed state.
 - **Options Page Functionality:**
     - Manages Gemini API key.
-    - Manages multiple Supadata API keys (add, list, activate, delete, rate-limit indicator).
+    - Manages multiple Supadata API keys (add, list, activate, delete, rate-limit indicator), with refined logic to only deactivate a key if the error message explicitly indicates a rate limit.
     - Language selection dropdown for summaries.
     - Saves all preferences to `chrome.storage.sync`.
     - Handles theme switching with system preference detection and sends updates to active tabs.

@@ -57,7 +57,7 @@ graph TD
 - **Mechanism:** `background.js` manages an array of Supadata API keys, each with an `id`, `key`, `name`, and `isRateLimited` status.
 - **Pattern:**
     - **Active Key Tracking:** An `activeSupadataKeyId` is stored in `chrome.storage.sync`.
-    - **Automatic Cycling:** If an API call to Supadata fails due to a rate limit or other error, `background.js` marks the current key as `isRateLimited` and automatically attempts the request with the next available key in the array.
+    - **Automatic Cycling:** If an API call to Supadata fails due to a *rate limit* error, `background.js` marks the current key as `isRateLimited` and automatically attempts the request with the next available key in the array. Other types of API errors will not deactivate the token.
     - **User Control:** Users can manually activate specific keys and delete keys from the options page.
 - **Benefit:** Enhances the reliability and availability of the transcript fetching service by providing redundancy and automatic failover for Supadata API keys.
 

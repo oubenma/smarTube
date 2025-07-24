@@ -1,0 +1,222 @@
+:root {
+  --bg-color: #ffffff;
+  --text-color: #212529;
+  --primary-color: #0d6efd;
+  --border-color: #dee2e6;
+  --input-bg: #ffffff;
+  --input-border: #ced4da;
+  --card-bg: #f8f9fa;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --button-text-color: #ffffff;
+  --theme-button-bg: #e9ecef;
+  --theme-button-active-bg: #0d6efd;
+  --theme-button-active-text: #ffffff;
+  --message-user-bg: #e9f5ff;
+  --message-assistant-bg: #f1f3f5;
+}
+
+:root.dark {
+  --bg-color: #121212;
+  --text-color: #e0e0e0;
+  --primary-color: #bb86fc;
+  --border-color: #333333;
+  --input-bg: #1e1e1e;
+  --input-border: #444444;
+  --card-bg: #1e1e1e;
+  --shadow-color: rgba(255, 255, 255, 0.1);
+  --button-text-color: #121212;
+  --theme-button-bg: #333333;
+  --theme-button-active-bg: #bb86fc;
+  --theme-button-active-text: #121212;
+  --message-user-bg: #2a2a3a;
+  --message-assistant-bg: #2c2c2c;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.app-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.theme-switcher button {
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  background-color: var(--theme-button-bg);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.theme-switcher button.active {
+  background-color: var(--theme-button-active-bg);
+  color: var(--theme-button-active-text);
+  font-weight: bold;
+}
+
+.input-section {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-section input {
+  flex-grow: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+
+.input-section button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  background-color: var(--primary-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.input-section button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.summary-container, .qa-section {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.summary-container h2 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.summary-container h3, .summary-container h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.summary-container p {
+    line-height: 1.6;
+}
+
+.summary-container ul, .summary-container ol {
+    padding-left: 20px;
+}
+
+.summary-container li {
+    margin-bottom: 0.5em;
+}
+
+.chat-history {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 10px;
+}
+
+.chat-message {
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.chat-message.user {
+  background-color: var(--message-user-bg);
+  border-bottom-right-radius: 0;
+  margin-left: auto;
+  max-width: 80%;
+}
+
+.chat-message.assistant {
+  background-color: var(--message-assistant-bg);
+  border-bottom-left-radius: 0;
+  max-width: 80%;
+}
+
+.qa-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.qa-input textarea {
+  flex-grow: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  resize: vertical;
+  min-height: 40px;
+}
+
+.qa-input button {
+  padding: 0.5rem 1rem;
+  font-size: 1.2rem;
+  background-color: var(--primary-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.qa-input button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

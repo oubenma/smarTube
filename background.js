@@ -1,7 +1,6 @@
 // background.js - Handles API calls and communication
 
 // Constants
-const GEMINI_MODEL = "gemini-1.5-flash-latest"; // Or "gemini-pro" etc.
 const SUPADATA_API_BASE_URL = "https://api.supadata.ai/v1/youtube/transcript";
 const API_KEYS_MISSING_ERROR = "API_KEYS_MISSING"; // Constant for error type
 
@@ -18,9 +17,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getSummary") {
         console.log("Background script received getSummary request for URL:", request.url);
 
-        // 1. Get Gemini API Key and Language Preference from storage
-        chrome.storage.sync.get(['geminiApiKey', 'summaryLanguage'], (items) => {
+        // 1. Get Gemini API Key, Model, and Language Preference from storage
+        chrome.storage.sync.get(['geminiApiKey', 'geminiModel', 'summaryLanguage'], (items) => {
             const geminiApiKey = items.geminiApiKey;
+            const geminiModel = items.geminiModel || 'gemini-2.5-flash-lite';
             const language = items.summaryLanguage || 'auto';
 
             if (!geminiApiKey || geminiApiKey.trim() === '') {
@@ -28,7 +28,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ error: API_KEYS_MISSING_ERROR });
                 return;
             }
-            console.log("Gemini API Key retrieved successfully.");
+            console.log("Gemini API Key and Model retrieved successfully. Model:", geminiModel);
 
             // 2. Get transcript using the new recursive function, then summarize
             tryGetTranscriptRecursive(request.url)
@@ -36,8 +36,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     if (!transcript || transcript.trim().length === 0) {
                         throw new Error("Received empty or invalid transcript from Supadata.");
                     }
-                    console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API with language:", language);
-                    return callGeminiAPI(transcript, geminiApiKey, language);
+                    console.log("Transcript fetched successfully (length:", transcript.length,"). Calling Gemini API with model:", geminiModel, "and language:", language);
+                    return callGeminiAPI(transcript, geminiApiKey, language, geminiModel);
                 })
                 .then(summary => {
                     console.log("Sending summary back to content script.");
@@ -68,8 +68,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.action === "askQuestion") {
         console.log("Background script received askQuestion request:", request.question, "for URL:", request.url);
 
-        chrome.storage.sync.get(['geminiApiKey'], (items) => {
+        chrome.storage.sync.get(['geminiApiKey', 'geminiModel'], (items) => {
             const geminiApiKey = items.geminiApiKey;
+            const geminiModel = items.geminiModel || 'gemini-2.5-flash-lite';
 
             if (!geminiApiKey || geminiApiKey.trim() === '') {
                 console.error("Gemini API Key missing or invalid for Q&A.");
@@ -80,15 +81,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 });
                 return;
             }
-            console.log("Gemini API Key retrieved for Q&A.");
+            console.log("Gemini API Key and Model retrieved for Q&A. Model:", geminiModel);
 
             tryGetTranscriptRecursive(request.url)
                 .then(transcript => {
                     if (!transcript || transcript.trim().length === 0) {
                         throw new Error("Cannot answer question: Transcript is empty or invalid.");
                     }
-                    console.log("Transcript fetched for Q&A. Calling Gemini for question.");
-                    return callGeminiForQuestion(transcript, request.question, geminiApiKey);
+                    console.log("Transcript fetched for Q&A. Calling Gemini for question with model:", geminiModel);
+                    return callGeminiForQuestion(transcript, request.question, geminiApiKey, geminiModel);
                 })
                 .then(answer => {
                     console.log("Sending answer back to content script.");
@@ -269,11 +270,11 @@ async function tryGetTranscriptRecursive(videoUrl, attemptCycle = 0, triedKeyIds
 }
 
 // Function to summarize transcript text using Gemini API
-async function callGeminiAPI(transcriptText, geminiApiKey, language) { // Added apiKey and language parameters
-    console.log(`Calling Gemini API to summarize transcript (length: ${transcriptText.length}) in language: ${language}`);
+async function callGeminiAPI(transcriptText, geminiApiKey, language, geminiModel) { // Added apiKey, language, and model parameters
+    console.log(`Calling Gemini API to summarize transcript (length: ${transcriptText.length}) with model: ${geminiModel} in language: ${language}`);
 
     // Construct API URL dynamically
-    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
     // Construct the prompt based on the selected language
     let languageInstruction = "";
@@ -382,10 +383,10 @@ console.log("Background service worker started.");
 
 
 // Function to ask a question about the transcript using Gemini API
-async function callGeminiForQuestion(transcriptText, question, geminiApiKey) {
-    console.log(`Calling Gemini API to answer question: "${question}"`);
+async function callGeminiForQuestion(transcriptText, question, geminiApiKey, geminiModel) {
+    console.log(`Calling Gemini API to answer question: "${question}" with model: ${geminiModel}`);
 
-    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
     // Limit transcript size if necessary (apply same limit as summarization)
     const MAX_INPUT_LENGTH = 300000;

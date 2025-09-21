@@ -34,7 +34,7 @@ The extension injects a summary container (`#youtube-summary-container-ext`) int
     *   All event listeners and state are reset for the new video context
     *   The MutationObserver also monitors URL changes to handle YouTube's dynamic navigation reliably
 
-The extension includes theme selection (Auto/Light/Dark) and container behavior settings. The "Auto" theme setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. Users can also choose to have the container start in a collapsed state. These settings are managed via a dedicated options page and saved using `chrome.storage.sync`. The options page features full dark mode support that:
+The extension includes Gemini model selection, theme selection (Auto/Light/Dark), and container behavior settings. Users can choose from various stable Gemini models including gemini-2.5-flash-lite (default), gemini-2.5-pro, gemini-2.5-flash, and others. The "Auto" theme setting matches YouTube's current theme, while "Light" and "Dark" force a specific theme. Users can also choose to have the container start in a collapsed state. These settings are managed via a dedicated options page and saved using `chrome.storage.sync`. The options page features full dark mode support that:
 - Automatically syncs with system preferences when in "Auto" mode
 - Provides a consistent dark theme across all UI elements
 - Uses CSS variables for theming with smooth transitions
@@ -55,12 +55,12 @@ Clicking the extension icon now directly opens the options page.
 *   **`background.js`**:
     *   Handles the core API interaction logic.
     *   Listens for `getSummary` messages from `content.js`.
-    *   Retrieves Gemini API key, Supadata API key settings (multiple keys, active key ID), and theme settings from `chrome.storage.sync`.
-    *   If keys are present, calls the Supadata Transcript API (using the active Supadata key, with logic to cycle through keys on rate limit/error) and then the Gemini API (using the Gemini key and the transcript).
+    *   Retrieves Gemini API key, selected Gemini model, Supadata API key settings (multiple keys, active key ID), and theme settings from `chrome.storage.sync`.
+    *   If keys are present, calls the Supadata Transcript API (using the active Supadata key, with logic to cycle through keys on rate limit/error) and then the Gemini API (using the selected Gemini model and the transcript).
     *   Handles API responses, including cycling Supadata keys if rate-limited, extracts the Markdown summary text from Gemini, and manages potential errors.
     *   Sends the Markdown summary or an error message (including `API_KEYS_MISSING` or "all keys rate-limited" errors) back to `content.js`.
     *   Listens for `openOptionsPage` messages from `content.js` and opens the extension's options page.
-    *   Listens for `askQuestion` messages from `content.js`, fetches the transcript (if needed), calls the Gemini API for a Q&A response, and sends the answer/error back to `content.js` via the `answerResponse` message.
+    *   Listens for `askQuestion` messages from `content.js`, fetches the transcript (if needed), calls the Gemini API with the selected model for a Q&A response, and sends the answer/error back to `content.js` via the `answerResponse` message.
 *   **`content.js`**:
     *   Responsible for interacting with the YouTube page's DOM.
     *   Injects a `div` container (`#youtube-summary-container-ext`) into the secondary column. This container is visible by default.
@@ -96,6 +96,7 @@ Clicking the extension icon now directly opens the options page.
     *   The HTML structure for the extension's options page.
     *   Provides input fields for:
         * Gemini API key with a link to obtain it.
+        * Gemini model selection dropdown with options for various stable Gemini models (default: gemini-2.5-flash-lite)
         * Management of multiple Supadata API keys:
             * Adding new keys with an optional name.
             * Listing existing keys, showing their name (or masked key) and an indicator if rate-limited.
@@ -107,10 +108,11 @@ Clicking the extension icon now directly opens the options page.
     *   Links to `options.css` and `options.js`.
 *   **`options.js`**:
     *   Handles the logic for the options page.
-    *   Loads saved settings (Gemini key, Supadata keys array, active Supadata key ID, theme, etc.) from `chrome.storage.sync` on page load.
+    *   Loads saved settings (Gemini key, selected Gemini model, Supadata keys array, active Supadata key ID, theme, etc.) from `chrome.storage.sync` on page load.
     *   Renders the list of Supadata API keys and handles their addition, deletion, and activation.
     *   Saves user preferences to `chrome.storage.sync`, including:
         * Gemini API key.
+        * Selected Gemini model (default: gemini-2.5-flash-lite).
         * Supadata API keys (stored as an array of objects, each with `id`, `key`, `name`, `isRateLimited`).
         * Active Supadata key ID.
         * Language preference
@@ -172,3 +174,4 @@ Clicking the extension icon now directly opens the options page.
 *   Added Q&A feature with fixed footer, input, send button, and chat-like display (Implemented).
 *   Font size customization for answers in the container (Implemented).
 *   Improved Arabic language text alignment and display (Implemented).
+*   Gemini model selection (Implemented: Users can now choose from various stable Gemini models with gemini-2.5-flash-lite as default).

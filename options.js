@@ -1,6 +1,7 @@
 // Function to save general options to chrome.storage
 function saveOptions() {
     const geminiKey = document.getElementById('geminiApiKey').value;
+    const geminiModel = document.getElementById('geminiModel').value;
     // Supadata keys are saved separately by their specific handlers
     const language = document.getElementById('summaryLanguage').value;
     const theme = document.querySelector('input[name="theme"]:checked').value;
@@ -10,6 +11,7 @@ function saveOptions() {
 
     chrome.storage.sync.set({
         geminiApiKey: geminiKey,
+        geminiModel: geminiModel,
         // supadataApiKey is no longer saved here
         summaryLanguage: language,
         theme: theme,
@@ -185,6 +187,7 @@ function restoreOptions() {
     // Use default values if keys aren't set
     chrome.storage.sync.get({
         geminiApiKey: '',
+        geminiModel: 'gemini-2.5-flash-lite',
         // supadataApiKey: '', // Old single key
         supadataApiKeys: [],     // New array for multiple keys
         activeSupadataKeyId: null, // ID of the active Supadata key
@@ -194,6 +197,7 @@ function restoreOptions() {
         fontSize: 14
     }, (items) => {
         document.getElementById('geminiApiKey').value = items.geminiApiKey;
+        document.getElementById('geminiModel').value = items.geminiModel;
         // document.getElementById('supadataApiKey').value = items.supadataApiKey; // Old single key
         renderSupadataKeysList(items.supadataApiKeys, items.activeSupadataKeyId); // Render the list of Supadata keys
         document.getElementById('summaryLanguage').value = items.summaryLanguage;

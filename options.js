@@ -1,3 +1,267 @@
+const DEFAULT_ACTION_ID = 'default-summary';
+const DEFAULT_ACTION_PROMPT = `{{language_instruction}}
+Summarize the following video transcript into concise key points, then provide a bullet list of highlights annotated with fitting emojis.
+Enforce standard numeral formatting using digits 0-9 regardless of language.
+
+Transcript:
+---
+{{transcript}}
+---`;
+
+let customActionsState = [];
+let currentCustomActionEditId = null;
+
+function generateActionId() {
+    return `action-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getDefaultAction() {
+    return {
+        id: DEFAULT_ACTION_ID,
+        label: 'Summarize',
+        prompt: DEFAULT_ACTION_PROMPT.trim()
+    };
+}
+
+function sanitizeCustomActions(actions = []) {
+    const seenIds = new Set();
+    const sanitized = [];
+
+    if (Array.isArray(actions)) {
+        actions.forEach((rawAction) => {
+            if (!rawAction) return;
+            const label = typeof rawAction.label === 'string' ? rawAction.label.trim() : '';
+            const prompt = typeof rawAction.prompt === 'string' ? rawAction.prompt.trim() : '';
+            let id = typeof rawAction.id === 'string' ? rawAction.id.trim() : '';
+
+            if (!label || !prompt) return;
+            if (!id) {
+                id = generateActionId();
+            }
+            if (seenIds.has(id)) {
+                id = generateActionId();
+            }
+
+            seenIds.add(id);
+            sanitized.push({ id, label, prompt });
+        });
+    }
+
+    if (sanitized.length === 0) {
+        sanitized.push(getDefaultAction());
+        return { actions: sanitized, mutated: true };
+    }
+
+    return { actions: sanitized, mutated: sanitized.length !== actions.length };
+}
+
+function ensureCustomActionsInitialized(actions = []) {
+    const { actions: sanitized, mutated } = sanitizeCustomActions(actions);
+    return { actions: sanitized, mutated };
+}
+
+function showStatus(message, color = 'green', timeout = 1500) {
+    const status = document.getElementById('statusMessage');
+    if (!status) return;
+
+    status.textContent = message;
+    status.style.color = color;
+
+    if (message && timeout > 0) {
+        const currentMessage = message;
+        setTimeout(() => {
+            if (status.textContent === currentMessage) {
+                status.textContent = '';
+            }
+        }, timeout);
+    }
+}
+
+function resetCustomActionForm() {
+    const labelInput = document.getElementById('newActionLabel');
+    const promptInput = document.getElementById('newActionPrompt');
+    const saveButton = document.getElementById('saveCustomActionBtn');
+    const cancelButton = document.getElementById('cancelCustomActionEditBtn');
+
+    if (labelInput) labelInput.value = '';
+    if (promptInput) promptInput.value = '';
+    currentCustomActionEditId = null;
+
+    if (saveButton) saveButton.textContent = 'Add Action';
+    if (cancelButton) cancelButton.hidden = true;
+}
+
+function populateCustomActionForm(action) {
+    const labelInput = document.getElementById('newActionLabel');
+    const promptInput = document.getElementById('newActionPrompt');
+    const saveButton = document.getElementById('saveCustomActionBtn');
+    const cancelButton = document.getElementById('cancelCustomActionEditBtn');
+
+    if (!action) return;
+    currentCustomActionEditId = action.id;
+
+    if (labelInput) labelInput.value = action.label;
+    if (promptInput) promptInput.value = action.prompt;
+    if (saveButton) saveButton.textContent = 'Update Action';
+    if (cancelButton) cancelButton.hidden = false;
+}
+
+function renderCustomActionsList(actions = []) {
+    const listElement = document.getElementById('customActionsList');
+    if (!listElement) return;
+
+    listElement.innerHTML = '';
+
+    if (!actions.length) {
+        const emptyState = document.createElement('p');
+        emptyState.textContent = 'No custom actions configured yet.';
+        listElement.appendChild(emptyState);
+        return;
+    }
+
+    actions.forEach((action) => {
+        const item = document.createElement('div');
+        item.className = 'custom-action-item';
+
+        const header = document.createElement('div');
+        header.className = 'custom-action-item-header';
+
+        const title = document.createElement('span');
+        title.className = 'custom-action-item-title';
+        title.textContent = action.label;
+        header.appendChild(title);
+
+        const buttonBar = document.createElement('div');
+        buttonBar.className = 'custom-action-item-buttons';
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'mini-button';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => handleEditCustomAction(action.id));
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'mini-button secondary-button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => handleDeleteCustomAction(action.id));
+
+        buttonBar.appendChild(editButton);
+        buttonBar.appendChild(deleteButton);
+        header.appendChild(buttonBar);
+
+        const promptPreview = document.createElement('div');
+        promptPreview.className = 'custom-action-item-prompt';
+        promptPreview.textContent = action.prompt;
+
+        item.appendChild(header);
+        item.appendChild(promptPreview);
+
+        listElement.appendChild(item);
+    });
+}
+
+function persistCustomActions(updatedActions, successMessage) {
+    const { actions, mutated } = ensureCustomActionsInitialized(updatedActions);
+    customActionsState = actions;
+
+    chrome.storage.sync.set({ customActionButtons: customActionsState }, () => {
+        renderCustomActionsList(customActionsState);
+        if (successMessage) {
+            const message = mutated && updatedActions.length === 0
+                ? `${successMessage} Default summarize action restored.`
+                : successMessage;
+            showStatus(message);
+        }
+    });
+}
+
+function handleSaveCustomAction() {
+    const labelInput = document.getElementById('newActionLabel');
+    const promptInput = document.getElementById('newActionPrompt');
+
+    const label = labelInput ? labelInput.value.trim() : '';
+    const prompt = promptInput ? promptInput.value.trim() : '';
+
+    if (!label) {
+        showStatus('Button label is required.', 'red');
+        if (labelInput) labelInput.focus();
+        return;
+    }
+
+    if (!prompt) {
+        showStatus('Prompt is required.', 'red');
+        if (promptInput) promptInput.focus();
+        return;
+    }
+
+    if (currentCustomActionEditId) {
+        const index = customActionsState.findIndex(action => action.id === currentCustomActionEditId);
+        if (index !== -1) {
+            customActionsState[index] = {
+                ...customActionsState[index],
+                label,
+                prompt
+            };
+        } else {
+            customActionsState.push({
+                id: currentCustomActionEditId,
+                label,
+                prompt
+            });
+        }
+        persistCustomActions(customActionsState, 'Custom action updated.');
+    } else {
+        const newAction = {
+            id: generateActionId(),
+            label,
+            prompt
+        };
+        customActionsState.push(newAction);
+        persistCustomActions(customActionsState, 'Custom action added.');
+    }
+
+    resetCustomActionForm();
+}
+
+function handleEditCustomAction(actionId) {
+    const action = customActionsState.find(item => item.id === actionId);
+    if (!action) {
+        showStatus('Unable to find action to edit.', 'red');
+        return;
+    }
+    populateCustomActionForm(action);
+}
+
+function handleCancelCustomActionEdit() {
+    resetCustomActionForm();
+    showStatus('Edit cancelled.', 'gray', 1000);
+}
+
+function handleDeleteCustomAction(actionId) {
+    if (!customActionsState.length) {
+        return;
+    }
+
+    const action = customActionsState.find(item => item.id === actionId);
+    if (!action) {
+        showStatus('Unable to find action to delete.', 'red');
+        return;
+    }
+
+    if (!confirm(`Delete the "${action.label}" action?`)) {
+        return;
+    }
+
+    const updated = customActionsState.filter(item => item.id !== actionId);
+    const successMessage = updated.length === 0
+        ? 'Custom action deleted.'
+        : `Deleted "${action.label}".`;
+
+    persistCustomActions(updated, successMessage);
+    resetCustomActionForm();
+}
+
 // Function to save general options to chrome.storage
 function saveOptions() {
     const geminiKey = document.getElementById('geminiApiKey').value;
@@ -7,7 +271,6 @@ function saveOptions() {
     const theme = document.querySelector('input[name="theme"]:checked').value;
     const initialCollapsed = document.getElementById('initialCollapsed').checked;
     const fontSize = parseInt(document.getElementById('current-font-size').textContent);
-    const status = document.getElementById('statusMessage');
 
     chrome.storage.sync.set({
         geminiApiKey: geminiKey,
@@ -19,8 +282,7 @@ function saveOptions() {
         fontSize: fontSize
     }, () => {
         // Update status to let user know options were saved.
-        status.textContent = 'General settings saved.'; // Clarified message
-        status.style.color = 'green';
+        showStatus('General settings saved.');
         
         // Send theme update to content script
         chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -32,9 +294,6 @@ function saveOptions() {
             }
         });
 
-        setTimeout(() => {
-            status.textContent = '';
-        }, 1500);
     });
 }
 
@@ -133,10 +392,7 @@ async function handleAddSupadataKey() {
             keyNameInput.value = '';
             keyValueInput.value = '';
             renderSupadataKeysList(updatedKeys, newActiveKeyId);
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Supadata API Key added.';
-            status.style.color = 'green';
-            setTimeout(() => status.textContent = '', 1500);
+            showStatus('Supadata API Key added.');
         });
     });
 }
@@ -156,10 +412,7 @@ async function handleDeleteSupadataKey(keyIdToDelete) {
 
         chrome.storage.sync.set({ supadataApiKeys: filteredKeys, activeSupadataKeyId: newActiveKeyId }, () => {
             renderSupadataKeysList(filteredKeys, newActiveKeyId);
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Supadata API Key deleted.';
-            status.style.color = 'green';
-            setTimeout(() => status.textContent = '', 1500);
+            showStatus('Supadata API Key deleted.');
         });
     });
 }
@@ -173,10 +426,7 @@ async function handleActivateSupadataKey(keyIdToActivate) {
 
         chrome.storage.sync.set({ supadataApiKeys: updatedKeys, activeSupadataKeyId: keyIdToActivate }, () => {
             renderSupadataKeysList(updatedKeys, keyIdToActivate);
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Supadata API Key activated.';
-            status.style.color = 'green';
-            setTimeout(() => status.textContent = '', 1500);
+            showStatus('Supadata API Key activated.');
         });
     });
 }
@@ -194,7 +444,8 @@ function restoreOptions() {
         summaryLanguage: 'auto',
         theme: 'auto',
         initialCollapsed: false,
-        fontSize: 14
+        fontSize: 14,
+        customActionButtons: []
     }, (items) => {
         document.getElementById('geminiApiKey').value = items.geminiApiKey;
         document.getElementById('geminiModel').value = items.geminiModel;
@@ -212,6 +463,13 @@ function restoreOptions() {
 
         // Set font size
         updateFontSize(items.fontSize);
+
+        const { actions, mutated } = ensureCustomActionsInitialized(items.customActionButtons);
+        customActionsState = actions;
+        renderCustomActionsList(customActionsState);
+        if (mutated) {
+            chrome.storage.sync.set({ customActionButtons: customActionsState });
+        }
     });
 }
 
@@ -271,4 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add Supadata Key button listener
     document.getElementById('addSupadataKeyBtn').addEventListener('click', handleAddSupadataKey);
+
+    // Custom action listeners
+    document.getElementById('saveCustomActionBtn').addEventListener('click', handleSaveCustomAction);
+    document.getElementById('cancelCustomActionEditBtn').addEventListener('click', handleCancelCustomActionEdit);
 });

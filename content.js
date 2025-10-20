@@ -3,6 +3,179 @@ console.log("SmarTube content script loaded.");
 let summaryDiv = null; // Keep track of the summary div
 let currentVideoUrl = '';
 let currentVideoId = '';
+let customActions = [];
+
+const DEFAULT_ACTION_ID = 'default-summary';
+const DEFAULT_ACTION_PROMPT = `{{language_instruction}}
+Summarize the following video transcript into concise key points, then provide a bullet list of highlights annotated with fitting emojis.
+Enforce standard numeral formatting using digits 0-9 regardless of language.
+
+Transcript:
+---
+{{transcript}}
+---`;
+
+function getDefaultAction() {
+    return {
+        id: DEFAULT_ACTION_ID,
+        label: 'Summarize',
+        prompt: DEFAULT_ACTION_PROMPT.trim()
+    };
+}
+
+function ensureCustomActions(actions = []) {
+    if (!Array.isArray(actions) || actions.length === 0) {
+        return { actions: [getDefaultAction()], mutated: true };
+    }
+
+    const cleaned = actions
+        .map(action => {
+            if (!action) return null;
+            const id = typeof action.id === 'string' ? action.id.trim() : '';
+            const label = typeof action.label === 'string' ? action.label.trim() : '';
+            const prompt = typeof action.prompt === 'string' ? action.prompt.trim() : '';
+            if (!id || !label || !prompt) return null;
+            return { id, label, prompt };
+        })
+        .filter(Boolean);
+
+    if (!cleaned.length) {
+        return { actions: [getDefaultAction()], mutated: true };
+    }
+
+    const mutated = cleaned.length !== actions.length;
+    return { actions: cleaned, mutated };
+}
+
+function getMessagesContainer() {
+    if (!summaryDiv) return null;
+    return summaryDiv.querySelector('#messages-container-ext');
+}
+
+function scrollMessagesToBottom() {
+    const messagesContainer = getMessagesContainer();
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+function createPlaceholderId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function escapeHtml(text) {
+    const tempDiv = document.createElement('div');
+    tempDiv.textContent = text;
+    return tempDiv.innerHTML;
+}
+
+function renderActionButtons(actions = []) {
+    if (!summaryDiv) return;
+    const buttonsContainer = summaryDiv.querySelector('#action-buttons-ext');
+    if (!buttonsContainer) return;
+
+    buttonsContainer.innerHTML = '';
+
+    if (!actions.length) {
+        const fallback = document.createElement('div');
+        fallback.className = 'action-buttons-empty';
+        fallback.textContent = 'No actions configured. Update settings in the SmarTube options page.';
+        buttonsContainer.appendChild(fallback);
+        return;
+    }
+
+    actions.forEach(action => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'action-button';
+        button.textContent = action.label;
+        button.title = action.prompt.length > 120 ? `${action.prompt.slice(0, 120)}…` : action.prompt;
+        button.addEventListener('click', () => handleActionButtonClick(action));
+        buttonsContainer.appendChild(button);
+    });
+}
+
+function handleActionButtonClick(action) {
+    const videoUrl = window.location.href;
+    console.log(`Action button "${action.label}" triggered for URL:`, videoUrl);
+
+    const userMessageHtml = `<strong>${escapeHtml(action.label)}</strong>`;
+    appendMessage(userMessageHtml, 'user');
+
+    const placeholderId = createPlaceholderId('action-placeholder');
+    appendMessage(`<i>${escapeHtml(action.label)} in progress...</i>`, 'assistant', placeholderId);
+
+    chrome.runtime.sendMessage({
+        action: 'runCustomPrompt',
+        actionId: action.id,
+        url: videoUrl,
+        label: action.label
+    }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error("Error sending runCustomPrompt message:", chrome.runtime.lastError.message);
+            renderActionResult(placeholderId, "Error communicating with background script: " + chrome.runtime.lastError.message, true);
+            return;
+        }
+
+        if (!response) {
+            renderActionResult(placeholderId, "Received no response from the background script. Check background logs.", true);
+            return;
+        }
+
+        if (response.error) {
+            renderActionResult(placeholderId, response.error, true);
+            return;
+        }
+
+        if (response.content) {
+            renderActionResult(placeholderId, response.content, false);
+        } else {
+            renderActionResult(placeholderId, "Received empty response from Gemini.", true);
+        }
+    });
+}
+
+function convertMarkdownToHtml(content) {
+    if (typeof showdown !== 'undefined') {
+        const converter = new showdown.Converter({
+            simplifiedAutoLink: true,
+            strikethrough: true,
+            tables: true,
+            tasklists: true
+        });
+        return converter.makeHtml(content);
+    }
+    console.warn("Showdown library not loaded; falling back to basic formatting.");
+    return content.replace(/\n/g, '<br>');
+}
+
+function renderActionResult(placeholderId, content, isError = false) {
+    if (!summaryDiv) return;
+    const placeholder = summaryDiv.querySelector(`#${placeholderId}`);
+
+    let htmlContent = '';
+    if (isError) {
+        htmlContent = `<strong>Error:</strong> ${content}`;
+    } else {
+        htmlContent = convertMarkdownToHtml(content);
+    }
+
+    if (!placeholder) {
+        console.warn("Placeholder not found for action result. Appending content directly.");
+        appendMessage(htmlContent, 'assistant');
+        return;
+    }
+
+    if (containsArabic(content)) {
+        placeholder.setAttribute('dir', 'rtl');
+    } else {
+        placeholder.setAttribute('dir', 'ltr');
+    }
+
+    placeholder.innerHTML = htmlContent;
+    placeholder.removeAttribute('id');
+    scrollMessagesToBottom();
+}
 
 // Function to create the container for the summary display
 function injectSummaryDivContainer() {
@@ -22,7 +195,8 @@ function injectSummaryDivContainer() {
                     </div>
                 </div>
                 <div id="summary-body-ext">
-                    <button id="show-summary-btn-ext">✨ Show Summary</button>
+                    <div id="action-buttons-ext" class="action-buttons"></div>
+                    <div id="messages-container-ext" class="messages-container"></div>
                 </div>
                 <div id="summary-footer-ext">
                     <textarea id="qa-input-ext" rows="1" placeholder="Ask anything about this video..."></textarea>
@@ -34,14 +208,22 @@ function injectSummaryDivContainer() {
             secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
 
             // Apply the theme and check initial collapse state
-            chrome.storage.sync.get(['theme', 'initialCollapsed', 'fontSize'], (result) => {
+            chrome.storage.sync.get(['theme', 'initialCollapsed', 'fontSize', 'customActionButtons'], (result) => {
                 applyTheme(result.theme || 'auto'); // Default to 'auto' theme
                 if (result.initialCollapsed) {
                     summaryDiv.classList.add('collapsed');
                 }
                 // Apply saved font size or default to 14
                 const fontSize = result.fontSize || 14;
-                document.documentElement.style.setProperty('--summary-font-size', `${fontSize}px`);
+                summaryDiv.style.setProperty('--summary-font-size', `${fontSize}px`);
+
+                const { actions, mutated } = ensureCustomActions(result.customActionButtons);
+                customActions = actions;
+                renderActionButtons(customActions);
+
+                if (mutated) {
+                    chrome.storage.sync.set({ customActionButtons: customActions });
+                }
             });
             console.log("Summary div container injected.");
 
@@ -65,12 +247,6 @@ function injectSummaryDivContainer() {
                      toggleCollapse();
                 }
             });
-
-            // Initial "Show Summary" button
-            const showSummaryButton = summaryDiv.querySelector('#show-summary-btn-ext');
-            if (showSummaryButton) {
-                showSummaryButton.addEventListener('click', handleShowSummaryClick);
-            }
 
             // Q&A Textarea (Enter/Shift+Enter)
             const qaInput = summaryDiv.querySelector('#qa-input-ext');
@@ -134,8 +310,8 @@ function containsArabic(text) {
 // Function to append a message to the summary body (chat style)
 function appendMessage(htmlContent, role, id = null) {
     if (!summaryDiv) return;
-    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
-    if (!summaryBody) return;
+    const messagesContainer = getMessagesContainer();
+    if (!messagesContainer) return;
 
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
@@ -149,64 +325,8 @@ function appendMessage(htmlContent, role, id = null) {
         messageDiv.setAttribute('dir', 'rtl');
     }
 
-    summaryBody.appendChild(messageDiv);
-
-    // Scroll to bottom
-    summaryBody.scrollTop = summaryBody.scrollHeight;
-}
-
-// Handle the "Show Summary" button click - Modified for chat flow
-function handleShowSummaryClick() {
-    const videoUrl = window.location.href;
-    console.log("Show Summary button clicked for URL:", videoUrl);
-
-    if (summaryDiv) {
-        const summaryBody = summaryDiv.querySelector('#summary-body-ext');
-        // Remove the "Show Summary" button
-        const showSummaryButton = summaryBody.querySelector('#show-summary-btn-ext');
-        if (showSummaryButton) {
-            showSummaryButton.remove();
-        }
-        // Append loading message
-        appendMessage("<i>Generating summary... Please wait.</i> ✨", 'assistant', 'summary-placeholder');
-        // summaryDiv.scrollTop = 0; // Scroll container to top - appendMessage handles scrolling
-    } else {
-        console.error("Summary div not found!");
-        alert("Error: Could not find the summary display area.");
-        return;
-    }
-
-    // Send message to background script to perform the API call
-    chrome.runtime.sendMessage({ action: "getSummary", url: videoUrl }, (response) => {
-        if (chrome.runtime.lastError) {
-            console.error("Error sending message:", chrome.runtime.lastError.message);
-            displaySummary("Error communicating with background script: " + chrome.runtime.lastError.message, true);
-            return;
-        }
-
-        if (response) {
-            console.log("Response from background received");
-            if (response.summary) {
-                // Pass the raw Markdown summary to displaySummary
-                displaySummary(response.summary, false); // false indicates it's not an error
-            } else if (response.error) {
-                console.error("Error from background:", response.error);
-                // Check for the specific API key error
-                if (response.error === "API_KEYS_MISSING") {
-                    // Provide a specific message with instructions
-                    const optionsMessage = `API Keys are missing. Please configure them in the extension options.<br>(Right-click the extension icon > Options)`;
-                    displaySummary(optionsMessage, true); // Display as an error
-                } else {
-                    // Pass other errors to displaySummary
-                    displaySummary(response.error, true); // true indicates it's an error
-                }
-            } else {
-                 displaySummary("Received an unexpected response from the background script.", true);
-            }
-        } else {
-            displaySummary("Received no response from the background script. Check background logs.", true);
-        }
-    });
+    messagesContainer.appendChild(messageDiv);
+    scrollMessagesToBottom();
 }
 
 // Function to apply the theme class based on the setting ('auto', 'light', 'dark')
@@ -233,58 +353,6 @@ function applyTheme(themeSetting) {
     console.log(`Applied theme: ${applyDarkTheme ? 'dark' : 'light'} (Setting: ${themeSetting})`);
 }
 
-// Function to display the summary (as HTML) or an error message - Modified for chat flow
-function displaySummary(content, isError = false) {
-    if (!summaryDiv) {
-        console.error("Summary div not available to display content.");
-        return;
-    }
-    // Find the placeholder message
-    const placeholder = summaryDiv.querySelector('#summary-placeholder');
-    if (!placeholder) {
-        console.error("Summary placeholder not found. Cannot display summary.");
-        // As a fallback, maybe append?
-        // appendMessage(isError ? `<strong>Error:</strong> ${content}` : content, 'assistant');
-        return;
-    }
-
-    let htmlContent = '';
-    if (isError) {
-        htmlContent = `<strong>Error:</strong> ${content}`;
-    } else {
-        // Use Showdown to convert Markdown summary to HTML
-        if (typeof showdown !== 'undefined') {
-            const converter = new showdown.Converter({
-                simplifiedAutoLink: true,
-                strikethrough: true,
-                tables: true,
-                tasklists: true
-            });
-            htmlContent = converter.makeHtml(content);
-        } else {
-            console.error("Showdown library not loaded!");
-            htmlContent = content.replace(/\n/g, '<br>'); // Fallback
-        }
-    }
-
-    // Check if content contains Arabic and set RTL if needed
-    if (containsArabic(content)) {
-        summaryDiv.querySelector('#summary-body-ext').setAttribute('dir', 'rtl');
-    } else {
-        summaryDiv.querySelector('#summary-body-ext').setAttribute('dir', 'ltr');
-    }
-
-    // Update the placeholder content and remove the ID
-    placeholder.innerHTML = htmlContent;
-    placeholder.id = ''; // Remove ID so it's not targeted again
-
-    // Ensure scroll is at bottom after content update
-    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
-     if (summaryBody) {
-        summaryBody.scrollTop = summaryBody.scrollHeight;
-     }
-}
-
 // Handle submission of a question from the input footer
 function handleQuestionSubmit() {
     if (!summaryDiv) return;
@@ -302,8 +370,8 @@ function handleQuestionSubmit() {
         // Clear input
         qaInput.value = '';
         // Append user message
-        // Basic escaping for display - consider a more robust sanitizer if needed
-        const escapedQuestion = questionText.replace(/</g, "<").replace(/>/g, ">");
+        // Basic escaping for display
+        const escapedQuestion = escapeHtml(questionText);
         appendMessage(escapedQuestion, 'user');
         // Append thinking placeholder
         appendMessage("<i>Thinking...</i>", 'assistant', 'thinking-placeholder');
@@ -326,47 +394,7 @@ function handleQuestionSubmit() {
 
 // Function to display the answer received from the background script
 function displayAnswer(content, isError = false) {
-     if (!summaryDiv) {
-        console.error("Summary div not available to display answer.");
-        return;
-    }
-    // Find the placeholder message
-    const placeholder = summaryDiv.querySelector('#thinking-placeholder');
-    if (!placeholder) {
-        console.error("Thinking placeholder not found. Cannot display answer.");
-        // Fallback: append directly
-        appendMessage(isError ? `<strong>Error:</strong> ${content}` : content, 'assistant');
-        return;
-    }
-
-    let htmlContent = '';
-    if (isError) {
-        htmlContent = `<strong>Error:</strong> ${content}`;
-    } else {
-         // Use Showdown for answers as well, assuming they might contain Markdown
-         if (typeof showdown !== 'undefined') {
-            const converter = new showdown.Converter({
-                simplifiedAutoLink: true,
-                strikethrough: true,
-                tables: true,
-                tasklists: true
-            });
-            htmlContent = converter.makeHtml(content);
-        } else {
-            console.error("Showdown library not loaded!");
-            htmlContent = content.replace(/\n/g, '<br>'); // Fallback
-        }
-    }
-
-    // Update the placeholder content and remove the ID
-    placeholder.innerHTML = htmlContent;
-    placeholder.id = ''; // Remove ID
-
-    // Ensure scroll is at bottom
-    const summaryBody = summaryDiv.querySelector('#summary-body-ext');
-     if (summaryBody) {
-        summaryBody.scrollTop = summaryBody.scrollHeight;
-     }
+     renderActionResult('thinking-placeholder', content, isError);
 }
 
 // --- Initialization and Handling YouTube's Dynamic Loading ---
@@ -419,6 +447,23 @@ if (window.location.href.includes('youtube.com/watch')) {
         }
     }, 500);
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'sync') return;
+
+    if (changes.customActionButtons) {
+        const { actions } = ensureCustomActions(changes.customActionButtons.newValue);
+        customActions = actions;
+        renderActionButtons(customActions);
+    }
+
+    if (changes.fontSize) {
+        const newFontSize = changes.fontSize.newValue || 14;
+        if (summaryDiv) {
+            summaryDiv.style.setProperty('--summary-font-size', `${newFontSize}px`);
+        }
+    }
+});
 
 // Listen for messages from background script or options page
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

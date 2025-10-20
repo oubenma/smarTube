@@ -113,23 +113,42 @@
     background: #a8a8a8; /* Slightly darker */
 }
 
-#show-summary-btn-ext {
-    display: block; /* Center block */
-    margin: 20px auto; /* Center horizontally */
-    padding: 8px 12px;
+#action-buttons-ext {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.action-button {
+    padding: 8px 14px;
     cursor: pointer;
     background-color: #f1f1f1;
     border: 1px solid #ccc;
     border-radius: 18px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    line-height: 20px;
+    line-height: 18px;
     color: #333;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
 }
 
-#show-summary-btn-ext:hover {
+.action-button:hover {
     background-color: #e0e0e0;
+}
+
+.action-button:active {
+    transform: translateY(1px);
+}
+
+.action-buttons-empty {
+    font-size: 0.95em;
+    color: #666;
+}
+
+#messages-container-ext {
+    display: flex;
+    flex-direction: column;
 }
 
 /* Content styling within the body */
@@ -290,14 +309,18 @@
     background: #777; /* Lighter hover for dark scrollbar */
 }
 
-#youtube-summary-container-ext.dark-theme #show-summary-btn-ext {
-    background-color: #444;
-    border-color: #666;
+#youtube-summary-container-ext.dark-theme .action-button {
+    background-color: #3a3a3a;
+    border-color: #555;
     color: #eee;
 }
 
-#youtube-summary-container-ext.dark-theme #show-summary-btn-ext:hover {
-    background-color: #555;
+#youtube-summary-container-ext.dark-theme .action-button:hover {
+    background-color: #4a4a4a;
+}
+
+#youtube-summary-container-ext.dark-theme .action-buttons-empty {
+    color: #bbb;
 }
 
 /* Dark theme content styling */

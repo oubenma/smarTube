@@ -74,7 +74,8 @@ legend {
 
 .option-item input[type="text"],
 .option-item input[type="password"],
-.option-item select {
+.option-item select,
+.option-item textarea {
     padding: 8px;
     border: 1px solid var(--input-border);
     border-radius: 4px;
@@ -86,7 +87,8 @@ legend {
 
 .option-item input[type="text"]:focus,
 .option-item input[type="password"]:focus,
-.option-item select:focus {
+.option-item select:focus,
+.option-item textarea:focus {
     outline: none;
     border-color: var(--link-color);
 }
@@ -192,4 +194,116 @@ input[type="checkbox"] {
 
 .font-size-preview p:last-child {
     margin-bottom: 0;
+}
+
+.option-item.full-width {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.option-help-text {
+    margin: 0 0 12px;
+    color: var(--text-color);
+    font-size: 0.95em;
+}
+
+.option-help-text code {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.9em;
+}
+
+.custom-action-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.custom-action-form .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.custom-action-form label {
+    font-weight: bold;
+}
+
+.custom-action-form textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.form-buttons button {
+    margin-top: 0;
+}
+
+.secondary-button {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.secondary-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .secondary-button:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.custom-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.custom-action-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--input-bg);
+}
+
+.custom-action-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-action-item-title {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.custom-action-item-prompt {
+    font-size: 0.9em;
+    color: var(--text-color);
+    white-space: pre-wrap;
+}
+
+.custom-action-item-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mini-button {
+    padding: 6px 10px;
+    font-size: 0.9em;
+    margin-top: 0;
 }

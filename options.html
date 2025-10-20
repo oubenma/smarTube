@@ -116,6 +116,30 @@
         </fieldset>
     </div>
 
+    <div class="option-item full-width">
+        <fieldset>
+            <legend>Custom Action Buttons</legend>
+            <p class="option-help-text">Create reusable prompts that appear as buttons in the YouTube panel. Placeholders: <code>{{transcript}}</code>, <code>{{language_instruction}}</code>, and <code>{{video_url}}</code>.</p>
+            <div class="custom-action-form">
+                <div class="form-row">
+                    <label for="newActionLabel">Button Label</label>
+                    <input type="text" id="newActionLabel" name="newActionLabel" placeholder="e.g., Summarize">
+                </div>
+                <div class="form-row">
+                    <label for="newActionPrompt">Prompt</label>
+                    <textarea id="newActionPrompt" name="newActionPrompt" rows="4" placeholder="Describe what Gemini should do. Use {{transcript}} for the transcript; optional {{language_instruction}} and {{video_url}} placeholders are also available."></textarea>
+                </div>
+                <div class="form-buttons">
+                    <button id="saveCustomActionBtn" type="button">Add Action</button>
+                    <button id="cancelCustomActionEditBtn" type="button" class="secondary-button" hidden>Cancel</button>
+                </div>
+            </div>
+            <div id="customActionsList" class="custom-actions-list">
+                <!-- Custom actions rendered by options.js -->
+            </div>
+        </fieldset>
+    </div>
+
     <button id="saveButton">Save Settings</button>
     <span id="statusMessage"></span>
 

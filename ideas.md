@@ -1,9 +1,0 @@
-- fix the top header that contains title and X close button
-- remove console.logs later
-- create a custom api instead of calling gemini and suppadata from extension
-- add an option of add customazed prompts for summurizing videos
-- add time stamp for each idea
-- fix the problem when navigation between multiple videos
-- multiple help buttons should appear, detailed summary, brief summary, key points ...
-- add summary with timestamps
-- add new logic of predifined buttons

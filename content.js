@@ -4,6 +4,9 @@ let summaryDiv = null; // Keep track of the summary div
 let currentVideoUrl = '';
 let currentVideoId = '';
 let customActions = [];
+let isExpandedView = false;
+let summaryOriginalParent = null;
+let summaryOriginalNextSibling = null;
 
 const DEFAULT_ACTION_ID = 'default-summary';
 const DEFAULT_ACTION_PROMPT = `{{language_instruction}}
@@ -14,6 +17,101 @@ Transcript:
 ---
 {{transcript}}
 ---`;
+
+const OVERLAY_BACKDROP_ID = 'youtube-summary-overlay-backdrop-ext';
+
+function removeOverlayBackdrop() {
+    const existingBackdrop = document.getElementById(OVERLAY_BACKDROP_ID);
+    if (existingBackdrop) {
+        existingBackdrop.remove();
+    }
+}
+
+function ensureOverlayBackdrop() {
+    let backdrop = document.getElementById(OVERLAY_BACKDROP_ID);
+    if (backdrop) return backdrop;
+
+    backdrop = document.createElement('div');
+    backdrop.id = OVERLAY_BACKDROP_ID;
+    backdrop.addEventListener('click', () => {
+        setExpandedView(false);
+    });
+
+    document.body.appendChild(backdrop);
+    return backdrop;
+}
+
+function updateToggleSizeButton() {
+    if (!summaryDiv) return;
+    const button = summaryDiv.querySelector('#toggle-size-summary-btn');
+    if (!button) return;
+
+    if (isExpandedView) {
+        button.textContent = '−';
+        button.title = 'Reduce view';
+        button.setAttribute('aria-label', 'Reduce view');
+    } else {
+        button.textContent = '⤢';
+        button.title = 'Expand view';
+        button.setAttribute('aria-label', 'Expand view');
+    }
+}
+
+function setExpandedView(shouldExpand) {
+    if (!summaryDiv) return;
+
+    if (shouldExpand === isExpandedView) {
+        updateToggleSizeButton();
+        return;
+    }
+
+    if (shouldExpand) {
+        summaryOriginalParent = summaryDiv.parentNode;
+        summaryOriginalNextSibling = summaryDiv.nextSibling;
+
+        isExpandedView = true;
+        ensureOverlayBackdrop();
+        summaryDiv.classList.add('expanded-view');
+        // Move the panel to <body> so it can overlay the video reliably.
+        document.body.appendChild(summaryDiv);
+        updateToggleSizeButton();
+        scrollMessagesToBottom();
+        return;
+    }
+
+    // Collapse expanded view
+    isExpandedView = false;
+    summaryDiv.classList.remove('expanded-view');
+    removeOverlayBackdrop();
+    updateToggleSizeButton();
+
+    const secondaryColumn = document.getElementById('secondary');
+    const canRestoreToOriginal = summaryOriginalParent && document.contains(summaryOriginalParent);
+
+    if (canRestoreToOriginal) {
+        const hasNextSibling = summaryOriginalNextSibling && summaryOriginalParent.contains(summaryOriginalNextSibling);
+        if (hasNextSibling) {
+            summaryOriginalParent.insertBefore(summaryDiv, summaryOriginalNextSibling);
+        } else {
+            summaryOriginalParent.appendChild(summaryDiv);
+        }
+    } else if (secondaryColumn) {
+        secondaryColumn.insertBefore(summaryDiv, secondaryColumn.firstChild);
+    }
+
+    summaryOriginalParent = null;
+    summaryOriginalNextSibling = null;
+}
+
+function toggleExpandedView() {
+    setExpandedView(!isExpandedView);
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && isExpandedView) {
+        setExpandedView(false);
+    }
+});
 
 function getDefaultAction() {
     return {
@@ -182,6 +280,12 @@ function injectSummaryDivContainer() {
     if (!document.getElementById('youtube-summary-container-ext')) {
         const secondaryColumn = document.getElementById('secondary'); // The column with related videos etc.
         if (secondaryColumn) {
+            // Reset overlay state for a fresh container.
+            isExpandedView = false;
+            summaryOriginalParent = null;
+            summaryOriginalNextSibling = null;
+            removeOverlayBackdrop();
+
             summaryDiv = document.createElement('div');
             summaryDiv.id = 'youtube-summary-container-ext';
             // Styles primarily in styles.css - container is visible by default
@@ -191,6 +295,7 @@ function injectSummaryDivContainer() {
                 <div id="summary-header-ext">
                     <span>SmarTube</span>
                     <div id="summary-header-buttons">
+                        <button id="toggle-size-summary-btn" title="Expand view" aria-label="Expand view">⤢</button>
                         <button id="settings-summary-btn" title="Settings">⚙️</button>
                     </div>
                 </div>
@@ -241,6 +346,12 @@ function injectSummaryDivContainer() {
                 chrome.runtime.sendMessage({ action: "openOptionsPage" });
             });
 
+            // Expand/minimize button
+            summaryDiv.querySelector('#toggle-size-summary-btn').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent header click listener from firing
+                toggleExpandedView();
+            });
+
             // Header click (for collapse)
             summaryDiv.querySelector('#summary-header-ext').addEventListener('click', (event) => {
                 if (!event.target.closest('#summary-header-buttons')) {
@@ -277,6 +388,15 @@ function getVideoIdFromUrl(url) {
 
 // Function to clear the existing summary container
 function clearSummaryContainer() {
+    if (summaryDiv) {
+        setExpandedView(false);
+    } else {
+        removeOverlayBackdrop();
+        isExpandedView = false;
+        summaryOriginalParent = null;
+        summaryOriginalNextSibling = null;
+    }
+
     const existingContainer = document.getElementById('youtube-summary-container-ext');
     if (existingContainer) {
         existingContainer.remove();

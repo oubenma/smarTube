@@ -16,6 +16,43 @@
     overflow: hidden; /* Contain sticky header */
 }
 
+/* --- Expanded Popup View --- */
+
+#youtube-summary-overlay-backdrop-ext {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2147483646;
+}
+
+#youtube-summary-container-ext.expanded-view {
+    position: fixed;
+    top: 5vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1000px, 94vw);
+    height: min(85vh, 900px);
+    margin: 0;
+    z-index: 2147483647;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+}
+
+#youtube-summary-container-ext.expanded-view #summary-body-ext {
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+@media (max-width: 640px) {
+    #youtube-summary-container-ext.expanded-view {
+        top: 2vh;
+        width: 96vw;
+        height: 92vh;
+    }
+}
+
 #summary-header-ext {
     display: flex;
     justify-content: space-between;

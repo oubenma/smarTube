@@ -34,13 +34,17 @@ There is also an optional `api/` FastAPI server that can fetch transcripts via `
 
 - The content script injects a container with id `#youtube-summary-container-ext` into YouTube’s **secondary column** (`#secondary`) on `*://*.youtube.com/watch*`.
 - The container includes:
-  - A **sticky header** with the title (“SmarTube”) and a **settings (⚙️)** button.
+  - A **sticky header** with the title (“SmarTube”), an **expand/minimize** button (`⤢` / `−`), and a **settings (⚙️)** button.
   - A body containing:
     - A **custom action buttons** area (user-defined reusable prompts; includes a default “Summarize” action).
     - A **messages/chat** area where actions, questions, and responses appear.
   - A **sticky footer** with a textarea (“Ask anything about this video...”) and a send button (➤).
-- Clicking the header (excluding the settings button) toggles collapse/expand via the `collapsed` class.
+- Clicking the header (excluding header buttons) toggles collapse/expand via the `collapsed` class.
 - Clicking the settings button opens the extension options page.
+- Clicking the expand/minimize button toggles an **overlay reader view**:
+  - Expanding (`⤢`) shows the same panel as a large popup over the page/video (backdrop + fixed-position container).
+  - Minimizing (`−`), pressing `Escape`, or clicking the backdrop returns it to the normal sidebar panel.
+  - Implementation: button id `#toggle-size-summary-btn`, backdrop id `#youtube-summary-overlay-backdrop-ext`, expanded state uses the `expanded-view` class on `#youtube-summary-container-ext`.
 
 ### Summary / Custom Actions
 
@@ -74,6 +78,7 @@ YouTube navigates without full reloads; the extension handles this by:
 - On video change:
   - The existing container is removed (`clearSummaryContainer()`).
   - A fresh container is injected after a small delay.
+  - Any expanded overlay/backdrop state is cleaned up.
 
 ### Theme, Font, and Language
 

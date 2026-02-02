@@ -9,6 +9,7 @@ let summaryOriginalParent = null;
 let summaryOriginalNextSibling = null;
 
 const DEFAULT_ACTION_ID = 'default-summary';
+const TRANSCRIPT_ACTION_ID = 'view-transcript';
 const DEFAULT_ACTION_PROMPT = `{{language_instruction}}
 Summarize the following video transcript into concise key points, then provide a bullet list of highlights annotated with fitting emojis.
 Enforce standard numeral formatting using digits 0-9 regardless of language.
@@ -17,6 +18,7 @@ Transcript:
 ---
 {{transcript}}
 ---`;
+const TRANSCRIPT_ACTION_PROMPT = `Raw transcript from Supadata (no Gemini processing).`;
 
 const OVERLAY_BACKDROP_ID = 'youtube-summary-overlay-backdrop-ext';
 
@@ -117,32 +119,85 @@ function getDefaultAction() {
     return {
         id: DEFAULT_ACTION_ID,
         label: 'Summarize',
-        prompt: DEFAULT_ACTION_PROMPT.trim()
+        prompt: DEFAULT_ACTION_PROMPT.trim(),
+        mode: 'gemini'
+    };
+}
+
+function getTranscriptAction() {
+    return {
+        id: TRANSCRIPT_ACTION_ID,
+        label: 'Transcript',
+        prompt: TRANSCRIPT_ACTION_PROMPT.trim(),
+        mode: 'transcript'
     };
 }
 
 function ensureCustomActions(actions = []) {
-    if (!Array.isArray(actions) || actions.length === 0) {
-        return { actions: [getDefaultAction()], mutated: true };
-    }
+    const cleaned = [];
+    const seenIds = new Set();
+    let mutated = false;
 
-    const cleaned = actions
-        .map(action => {
-            if (!action) return null;
-            const id = typeof action.id === 'string' ? action.id.trim() : '';
+    if (Array.isArray(actions)) {
+        actions.forEach((action) => {
+            if (!action) {
+                mutated = true;
+                return;
+            }
+
+            let id = typeof action.id === 'string' ? action.id.trim() : '';
             const label = typeof action.label === 'string' ? action.label.trim() : '';
-            const prompt = typeof action.prompt === 'string' ? action.prompt.trim() : '';
-            if (!id || !label || !prompt) return null;
-            return { id, label, prompt };
-        })
-        .filter(Boolean);
+            let prompt = typeof action.prompt === 'string' ? action.prompt.trim() : '';
+            const mode = action.mode === 'transcript' ? 'transcript' : 'gemini';
+
+            if (!label) {
+                mutated = true;
+                return;
+            }
+
+            if (!id) {
+                id = `${mode}-action-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                mutated = true;
+            }
+
+            if (seenIds.has(id)) {
+                id = `${id}-${Math.random().toString(36).slice(2, 4)}`;
+                mutated = true;
+            }
+            seenIds.add(id);
+
+            if (mode === 'gemini' && !prompt) {
+                mutated = true;
+                return;
+            }
+
+            if (mode === 'transcript' && !prompt) {
+                prompt = TRANSCRIPT_ACTION_PROMPT.trim();
+                mutated = true;
+            }
+
+            cleaned.push({ id, label, prompt, mode });
+        });
+    }
 
     if (!cleaned.length) {
-        return { actions: [getDefaultAction()], mutated: true };
+        cleaned.push(getDefaultAction());
+        cleaned.push(getTranscriptAction());
+        return { actions: cleaned, mutated: true };
     }
 
-    const mutated = cleaned.length !== actions.length;
-    return { actions: cleaned, mutated };
+    if (!cleaned.some(action => action.id === DEFAULT_ACTION_ID)) {
+        cleaned.unshift(getDefaultAction());
+        mutated = true;
+    }
+
+    if (!cleaned.some(action => action.id === TRANSCRIPT_ACTION_ID)) {
+        cleaned.splice(1, 0, getTranscriptAction());
+        mutated = true;
+    }
+
+    const mutatedByLength = cleaned.length !== actions.length;
+    return { actions: cleaned, mutated: mutated || mutatedByLength };
 }
 
 function getMessagesContainer() {
@@ -228,7 +283,7 @@ function handleActionButtonClick(action) {
         if (response.content) {
             renderActionResult(placeholderId, response.content, false);
         } else {
-            renderActionResult(placeholderId, "Received empty response from Gemini.", true);
+            renderActionResult(placeholderId, "Received empty response.", true);
         }
     });
 }

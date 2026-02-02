@@ -285,9 +285,51 @@ input[type="checkbox"] {
     gap: 10px;
 }
 
+.custom-action-item-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
 .custom-action-item-title {
     font-weight: bold;
     color: var(--text-color);
+}
+
+.custom-action-type {
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    font-size: 0.85em;
+    white-space: nowrap;
+    color: var(--text-color);
+}
+
+.custom-action-type.type-transcript {
+    background-color: rgba(46, 125, 50, 0.12);
+    border-color: #2e7d32;
+    color: #2e7d32;
+}
+
+.custom-action-type.type-gemini {
+    background-color: rgba(25, 118, 210, 0.12);
+    border-color: #1565c0;
+    color: #1565c0;
+}
+
+[data-theme="dark"] .custom-action-type.type-transcript {
+    background-color: rgba(76, 175, 80, 0.2);
+    border-color: #a5d6a7;
+    color: #a5d6a7;
+}
+
+[data-theme="dark"] .custom-action-type.type-gemini {
+    background-color: rgba(33, 150, 243, 0.2);
+    border-color: #90caf9;
+    color: #90caf9;
 }
 
 .custom-action-item-prompt {

@@ -1,4 +1,5 @@
 const DEFAULT_ACTION_ID = 'default-summary';
+const TRANSCRIPT_ACTION_ID = 'view-transcript';
 const DEFAULT_ACTION_PROMPT = `{{language_instruction}}
 Summarize the following video transcript into concise key points, then provide a bullet list of highlights annotated with fitting emojis.
 Enforce standard numeral formatting using digits 0-9 regardless of language.
@@ -7,6 +8,7 @@ Transcript:
 ---
 {{transcript}}
 ---`;
+const TRANSCRIPT_ACTION_PROMPT = `Raw transcript from Supadata (no Gemini processing).`;
 
 let customActionsState = [];
 let currentCustomActionEditId = null;
@@ -19,40 +21,82 @@ function getDefaultAction() {
     return {
         id: DEFAULT_ACTION_ID,
         label: 'Summarize',
-        prompt: DEFAULT_ACTION_PROMPT.trim()
+        prompt: DEFAULT_ACTION_PROMPT.trim(),
+        mode: 'gemini'
+    };
+}
+
+function getTranscriptAction() {
+    return {
+        id: TRANSCRIPT_ACTION_ID,
+        label: 'Transcript',
+        prompt: TRANSCRIPT_ACTION_PROMPT.trim(),
+        mode: 'transcript'
     };
 }
 
 function sanitizeCustomActions(actions = []) {
     const seenIds = new Set();
     const sanitized = [];
+    let mutated = false;
 
     if (Array.isArray(actions)) {
         actions.forEach((rawAction) => {
-            if (!rawAction) return;
+            if (!rawAction) {
+                mutated = true;
+                return;
+            }
             const label = typeof rawAction.label === 'string' ? rawAction.label.trim() : '';
-            const prompt = typeof rawAction.prompt === 'string' ? rawAction.prompt.trim() : '';
+            let prompt = typeof rawAction.prompt === 'string' ? rawAction.prompt.trim() : '';
             let id = typeof rawAction.id === 'string' ? rawAction.id.trim() : '';
+            const mode = rawAction.mode === 'transcript' ? 'transcript' : 'gemini';
 
-            if (!label || !prompt) return;
+            if (!label) {
+                mutated = true;
+                return;
+            }
+
             if (!id) {
                 id = generateActionId();
+                mutated = true;
             }
             if (seenIds.has(id)) {
                 id = generateActionId();
+                mutated = true;
+            }
+
+            if (mode === 'gemini' && !prompt) {
+                mutated = true;
+                return;
+            }
+
+            if (mode === 'transcript' && !prompt) {
+                prompt = TRANSCRIPT_ACTION_PROMPT.trim();
+                mutated = true;
             }
 
             seenIds.add(id);
-            sanitized.push({ id, label, prompt });
+            sanitized.push({ id, label, prompt, mode });
         });
     }
 
     if (sanitized.length === 0) {
         sanitized.push(getDefaultAction());
+        sanitized.push(getTranscriptAction());
         return { actions: sanitized, mutated: true };
     }
 
-    return { actions: sanitized, mutated: sanitized.length !== actions.length };
+    if (!sanitized.some(action => action.id === DEFAULT_ACTION_ID)) {
+        sanitized.unshift(getDefaultAction());
+        mutated = true;
+    }
+
+    if (!sanitized.some(action => action.id === TRANSCRIPT_ACTION_ID)) {
+        sanitized.splice(1, 0, getTranscriptAction());
+        mutated = true;
+    }
+
+    return { actions: sanitized, mutated: mutated || sanitized.length !== actions.length };
 }
 
 function ensureCustomActionsInitialized(actions = []) {
@@ -126,10 +170,20 @@ function renderCustomActionsList(actions = []) {
         const header = document.createElement('div');
         header.className = 'custom-action-item-header';
 
+        const titleGroup = document.createElement('div');
+        titleGroup.className = 'custom-action-item-title-group';
+
         const title = document.createElement('span');
         title.className = 'custom-action-item-title';
         title.textContent = action.label;
-        header.appendChild(title);
+        titleGroup.appendChild(title);
+
+        const typeBadge = document.createElement('span');
+        typeBadge.className = `custom-action-type ${action.mode === 'transcript' ? 'type-transcript' : 'type-gemini'}`;
+        typeBadge.textContent = action.mode === 'transcript' ? 'Transcript only' : 'Gemini prompt';
+        titleGroup.appendChild(typeBadge);
+
+        header.appendChild(titleGroup);
 
         const buttonBar = document.createElement('div');
         buttonBar.className = 'custom-action-item-buttons';
@@ -197,17 +251,20 @@ function handleSaveCustomAction() {
 
     if (currentCustomActionEditId) {
         const index = customActionsState.findIndex(action => action.id === currentCustomActionEditId);
+        const existingMode = index !== -1 ? (customActionsState[index].mode || 'gemini') : 'gemini';
         if (index !== -1) {
             customActionsState[index] = {
                 ...customActionsState[index],
                 label,
-                prompt
+                prompt,
+                mode: existingMode
             };
         } else {
             customActionsState.push({
                 id: currentCustomActionEditId,
                 label,
-                prompt
+                prompt,
+                mode: existingMode
             });
         }
         persistCustomActions(customActionsState, 'Custom action updated.');
@@ -215,7 +272,8 @@ function handleSaveCustomAction() {
         const newAction = {
             id: generateActionId(),
             label,
-            prompt
+            prompt,
+            mode: 'gemini'
         };
         customActionsState.push(newAction);
         persistCustomActions(customActionsState, 'Custom action added.');
@@ -246,6 +304,11 @@ function handleDeleteCustomAction(actionId) {
     const action = customActionsState.find(item => item.id === actionId);
     if (!action) {
         showStatus('Unable to find action to delete.', 'red');
+        return;
+    }
+
+    if (action.id === DEFAULT_ACTION_ID || action.id === TRANSCRIPT_ACTION_ID) {
+        showStatus('Built-in actions cannot be deleted.', 'red', 1800);
         return;
     }
 

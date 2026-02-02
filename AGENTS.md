@@ -36,7 +36,7 @@ There is also an optional `api/` FastAPI server that can fetch transcripts via `
 - The container includes:
   - A **sticky header** with the title (“SmarTube”), an **expand/minimize** button (`⤢` / `−`), and a **settings (⚙️)** button.
   - A body containing:
-    - A **custom action buttons** area (user-defined reusable prompts; includes a default “Summarize” action).
+    - A **custom action buttons** area (user-defined reusable prompts; includes built-in “Summarize” and “Transcript” actions).
     - A **messages/chat** area where actions, questions, and responses appear.
   - A **sticky footer** with a textarea (“Ask anything about this video...”) and a send button (➤).
 - Clicking the header (excluding header buttons) toggles collapse/expand via the `collapsed` class.
@@ -48,7 +48,8 @@ There is also an optional `api/` FastAPI server that can fetch transcripts via `
 
 ### Summary / Custom Actions
 
-- The default “Summarize” action (and any custom actions) use a prompt template. Supported placeholders:
+- Built-in actions include “Summarize” (Gemini prompt) and “Transcript” (raw Supadata transcript, no Gemini processing).
+- Gemini-mode actions (default) use a prompt template. Supported placeholders:
   - `{{transcript}}`
   - `{{language_instruction}}`
   - `{{video_url}}`
@@ -56,7 +57,7 @@ There is also an optional `api/` FastAPI server that can fetch transcripts via `
   - The action label is appended to the chat as a user message.
   - A placeholder message (e.g. “Summarize in progress…”) is inserted.
   - `content.js` sends `runCustomPrompt` to `background.js` with `{ actionId, url, label }`.
-  - `background.js` fetches transcript (Supadata) and calls Gemini to generate content.
+  - `background.js` fetches transcript (Supadata) and either calls Gemini (`mode: gemini`) or returns the raw transcript (`mode: transcript`).
   - The placeholder is replaced with the Markdown-rendered result (Showdown.js).
 
 ### Q&A
@@ -130,7 +131,7 @@ graph TD
 - `initialCollapsed`
 - `summaryLanguage`
 - `fontSize`
-- `customActionButtons`: array of `{ id, label, prompt }` (includes default action)
+- `customActionButtons`: array of `{ id, label, prompt, mode }` (includes built-in actions)
 
 3) **Supadata key resilience:** background cycles keys on explicit rate-limit signals and tracks per-key `isRateLimited`, with an active-key pointer (`activeSupadataKeyId`).
 
@@ -194,6 +195,7 @@ Implemented and working:
 - Injected UI panel with collapse, settings button, theme support.
 - Transcript fetching via Supadata with multi-key management + cycling.
 - Gemini summarization + transcript-grounded Q&A.
+- Built-in Transcript action (transcript-only mode) and action type badges in options.
 - Markdown rendering (Showdown), font size control, Arabic RTL detection.
 - Robust navigation handling (History API + MutationObserver).
 - Options page for keys, model selection, theme, language, collapse, font size, and custom action buttons.
@@ -202,13 +204,13 @@ Implemented and working:
 
 (From the former `ideas.md`; update as needed.)
 
-- Add a button near settings to expand the panel (larger view).
+- Add timestamps / time-linked summaries.
+- Improve reliability when navigating between multiple videos.
 - Fix/improve the top header layout (title + close button).
 - Remove/trim `console.log` noise for production.
 - Consider a custom backend API instead of calling Gemini/Supadata directly from the extension.
-- Add timestamps / time-linked summaries.
-- Improve reliability when navigating between multiple videos.
-- Add more predefined helper actions (detailed summary, brief summary, key points, etc.).
+- Add more predefined helper actions beyond Summarize + Transcript (detailed summary, brief summary, key points, etc.).
+- add read aloud feature
 
 ## Skills (Codex)
 
